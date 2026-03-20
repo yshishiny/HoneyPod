@@ -1,8 +1,7 @@
 FROM docker.elastic.co/kibana/kibana:8.9.1
 
-ENV ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOSTS:-http://elasticsearch:9200}
-ENV ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-elastic}
-ENV ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-honeypod-elastic-password-2024}
+ENV ELASTICSEARCH_HOSTS=http://siem.railway.internal:9200
+ENV xpack.security.enabled=false
 
 EXPOSE 5601
 
