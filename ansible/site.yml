@@ -1,0 +1,367 @@
+---
+# ============================================================================
+# HoneyPod Master Playbook - Complete Infrastructure Orchestration
+# ============================================================================
+#
+# USAGE:
+#   # Deploy all systems
+#   ansible-playbook site.yml -i inventory/hosts
+#
+#   # Deploy with specific tags
+#   ansible-playbook site.yml --tags "ad-setup" -i inventory/hosts
+#   ansible-playbook site.yml --tags "hardening" -i inventory/hosts
+#   ansible-playbook site.yml --tags "siem-agent" -i inventory/hosts
+#
+#   # Deploy specific host groups
+#   ansible-playbook site.yml -i inventory/hosts -l domain_controllers
+#   ansible-playbook site.yml -i inventory/hosts -l windows_endpoints
+#
+# TAGS:
+#   always              - Always run (validation, banners)
+#   baseline            - Base OS configuration (firewall, updates, users)
+#   hardening           - Security hardening (CIS benchmarks, host policies)
+#   ad-setup            - Active Directory domain creation
+#   domain-join         - Domain join Windows systems
+#   siem-agent          - Deploy monitoring agents (Beats, rsyslog)
+#   canary-deployment   - Deploy honeypots (Cowrie, OpenCanary)
+#   caldera-deploy      - Deploy Caldera C2 platform
+#   verification        - Verification tests
+#
+# ============================================================================
+
+# ============================================================================
+# PHASE 1: Domain Controller Setup (Windows Server 2022)
+# ============================================================================
+- name: Configure Active Directory Domain Controller
+  hosts: domain_controllers
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/domain_controllers.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 1: Configuring Domain Controller - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: active-directory
+      tags: [always, ad-setup]
+
+  post_tasks:
+    - name: Wait for AD to stabilize
+      win_wait_for_serial:
+        timeout: 120
+      tags: [ad-setup]
+
+    - name: Test AD connectivity
+      win_shell: Get-ADDomain
+      register: ad_test
+      tags: [ad-setup, verification]
+
+# ============================================================================
+# PHASE 2: Windows Baseline Configuration (All Windows Systems)
+# ============================================================================
+- name: Configure Windows Baseline
+  hosts: windows_endpoints:domain_controllers
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/windows_systems.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 2: Configuring Windows Baseline - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: windows-base
+      tags: [always, baseline]
+
+# ============================================================================
+# PHASE 3: Domain Join (Windows Endpoints)
+# ============================================================================
+- name: Join Windows Systems to Domain
+  hosts: windows_endpoints
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/windows_systems.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 3: Joining Domain - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: domain-join
+      tags: [domain-join]
+      when: inventory_hostname != groups['domain_controllers'][0]
+
+# ============================================================================
+# PHASE 4: Linux Baseline Configuration
+# ============================================================================
+- name: Configure Linux Baseline
+  hosts: linux_workstations:security_servers:simulation_servers:deception_servers
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/linux_systems.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 4: Configuring Linux Baseline - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: linux-base
+      tags: [always, baseline]
+
+# ============================================================================
+# PHASE 5: Hardening (All Systems)
+# ============================================================================
+- name: Apply Security Hardening
+  hosts: all
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/hardening.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 5: Applying Hardening - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: hardening
+      tags: [hardening]
+
+# ============================================================================
+# PHASE 6: SIEM Agent Deployment (All Systems)
+# ============================================================================
+- name: Deploy SIEM Monitoring Agents
+  hosts: all
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/siem_monitoring.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 6: Deploying SIEM Agents - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: siem-agent
+      tags: [siem-agent, monitoring]
+
+# ============================================================================
+# PHASE 7: Honeypot Deployment (Deception Layer)
+# ============================================================================
+- name: Deploy Honeypots and Deception Layer
+  hosts: deception_servers
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/honeypots.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 7: Deploying Honeypots - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: canary-deployment
+      tags: [canary-deployment, honeypots]
+
+# ============================================================================
+# PHASE 8: Caldera C2 Deployment (Attack Simulation)
+# ============================================================================
+- name: Deploy Caldera C2 Framework
+  hosts: simulation_servers
+  gather_facts: yes
+  become: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/caldera.yml"
+
+  pre_tasks:
+    - name: Display deployment phase
+      debug:
+        msg: "PHASE 8: Deploying Caldera C2 - {{ inventory_hostname }}"
+      tags: always
+
+  roles:
+    - role: caldera-deploy
+      tags: [caldera-deploy, simulation]
+
+# ============================================================================
+# PHASE 9: Verification and Testing
+# ============================================================================
+- name: Verify Deployment
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - "{{ playbook_dir }}/inventory/group_vars/verification.yml"
+
+  pre_tasks:
+    - name: Display verification phase
+      debug:
+        msg: "PHASE 9: Verifying Deployment - {{ inventory_hostname }}"
+      tags: always
+
+  tasks:
+    - name: Connectivity verification
+      block:
+        - name: Ping all hosts
+          ping:
+          tags: [verification]
+
+        - name: Get system info
+          setup:
+            filter: ansible_*
+          tags: [verification]
+
+        - name: Verify hostname resolution
+          getent:
+            database: hosts
+            key: "{{ inventory_hostname }}"
+          tags: [verification]
+      tags: [verification]
+    
+    - name: Generate deployment report
+      template:
+        src: deployment_report.j2
+        dest: "/tmp/honeypod_deployment_report_{{ inventory_hostname }}.txt"
+      tags: [verification]
+
+# ============================================================================
+# Final Summary
+# ============================================================================
+- name: Deployment Summary
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display completion banner
+      debug:
+        msg: |
+          ╔═════════════════════════════════════════════════════════════╗
+          ║       HoneyPod Cyber Range Deployment Complete!            ║
+          ║                                                              ║
+          ║ Lab is ready for attack scenarios and red team exercises    ║
+          ║                                                              ║
+          ║ Key Services:                                               ║
+          ║  - Active Directory      : 192.168.20.10 (dc-honeypod-01)   ║
+          ║  - SIEM/ELK Stack        : 192.168.50.10 (siem-honeypod-01) ║
+          ║  - Caldera C2            : 192.168.60.10 (caldera-01)       ║
+          ║  - Honeypots             : 192.168.40.10 (deception-01)     ║
+          ║                                                              ║
+          ║ Next Steps:                                                 ║
+          ║  1. Access Kibana: http://192.168.50.10:5601               ║
+          ║  2. Access Caldera: http://192.168.60.10:8888              ║
+          ║  3. Review DEPLOYMENT-STATUS.md for detailed info          ║
+          ║  4. Start threat simulation: caldera scenarios              ║
+          ║                                                              ║
+          ╚═════════════════════════════════════════════════════════════╝
+      run_once: true
+      tags: always
+      run_once: true
+      tags: always
+
+  roles:
+    # =====================================================================
+    # Windows DC Setup (domain controller)
+    # =====================================================================
+    - role: active-directory
+      tags: [ad-setup, windows]
+      when: inventory_hostname in groups['domain_controllers']
+      vars:
+        domain_name: "corp.local"
+        netbios_name: "CORP"
+        admin_user: "honeyadmin"
+
+    # =====================================================================
+    # Domain Join (all Windows except DC)
+    # =====================================================================
+    - role: domain-join
+      tags: [domain-join, windows]
+      when: inventory_hostname in groups['windows_endpoints'] or inventory_hostname in groups['servers']
+      vars:
+        domain_name: "corp.local"
+        domain_admin: "CORP\\honeyadmin"
+
+    # =====================================================================
+    # Common Hardening (all systems)
+    # =====================================================================
+    - role: hardening
+      tags: [hardening, always]
+      vars:
+        enable_audit_logging: true
+        enable_firewall: true
+        disable_unnecessary_services: true
+
+    # =====================================================================
+    # SIEM Agent Deployment (all systems)
+    # =====================================================================
+    - role: siem-agent
+      tags: [siem-agent]
+      vars:
+        siem_server: "{{ hostvars[groups['security_servers'][0]]['ansible_host'] | default('192.168.50.20') }}"
+        siem_port: 514
+
+    # =====================================================================
+    # Deception Layer (honeypots)
+    # =====================================================================
+    - role: canary-deployment
+      tags: [canary-deployment]
+      when: inventory_hostname in groups['deception_servers']
+
+    # =====================================================================
+    # Caldera C2 (attack simulation)
+    # =====================================================================
+    - role: caldera-deploy
+      tags: [caldera-deploy]
+      when: inventory_hostname in groups['simulation_servers']
+      vars:
+        caldera_version: "5.0.0"
+        caldera_port: 8888
+
+    # =====================================================================
+    # Application Deployment (web + database)
+    # =====================================================================
+    - role: app-deploy
+      tags: [app-deploy]
+      when: inventory_hostname in groups['web_servers']
+
+  post_tasks:
+    - name: Post-deployment verification
+      debug:
+        msg: |
+          ✓ Deployment completed for {{ inventory_hostname }}
+          ✓ Zone: {{ zone | default('unknown') }}
+          ✓ Role: {{ role | default('unknown') }}
+      tags: always
+
+    - name: Generate inventory summary
+      debug:
+        msg: |
+          ==================================================
+          DEPLOYMENT SUMMARY
+          ==================================================
+          Domain Controller: dc-01.corp.local
+          Windows Endpoints: 5 (ep-01 through ep-05)
+          Linux Workstation: lnx-wks-01.corp.local
+          Web Server: web-01.corp.local (DMZ)
+          Database Server: db-01.corp.local (Server Zone)
+          SIEM: siem-01.lab.honeypod.local
+          Caldera C2: attack-caldera-01.lab.honeypod.local
+          Honeypots: canary-01, cowrie-01 (Deception Zone)
+          ==================================================
+      run_once: true
+      tags: always

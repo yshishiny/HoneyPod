@@ -1,0 +1,65 @@
+---
+# ============================================================================
+# Connectivity Verification Playbook
+# ============================================================================
+# Verifies network connectivity between all HoneyPod components
+
+- name: Verify HoneyPod Connectivity
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Test connectivity to all hosts
+      block:
+        - name: Ping all hosts (Windows)
+          win_ping:
+          when: ansible_os_family == "Windows"
+
+        - name: Ping all hosts (Linux)
+          ping:
+          when: ansible_os_family != "Windows"
+
+    - name: Test DC connectivity
+      block:
+        - name: Test DC connectivity (Windows)
+          win_shell: |
+            Test-Connection -ComputerName dc-honeypod-01 -Count 2 -Quiet
+          ignore_errors: yes
+          when: ansible_os_family == "Windows"
+
+        - name: Test DC connectivity (Linux)
+          shell: ping -c 2 192.168.20.10 && echo "OK"
+          ignore_errors: yes
+          when: ansible_os_family != "Windows"
+
+    - name: Test SIEM connectivity
+      block:
+        - name: Test SIEM connectivity (Windows)
+          win_shell: |
+            Test-Connection -ComputerName siem-honeypod-01 -Count 2 -Quiet
+          ignore_errors: yes
+          when: ansible_os_family == "Windows"
+
+        - name: Test SIEM connectivity (Linux)
+          shell: ping -c 2 192.168.50.10 && echo "OK"
+          ignore_errors: yes
+          when: ansible_os_family != "Windows"
+
+    - name: Test port connectivity
+      block:
+        - name: Test WinRM port (Windows)
+          win_shell: |
+            Test-NetConnection -ComputerName {{ item }} -Port 5985 | Select-Object TcpTestSucceeded
+          loop:
+            - 192.168.20.10
+            - 192.168.10.11
+            - 192.168.10.12
+          ignore_errors: yes
+          when: ansible_os_family == "Windows"
+
+        - name: Test SSH port (Linux)
+          shell: nc -z -w 2 192.168.50.10 22 && echo "SSH OK"
+          ignore_errors: yes
+          when: ansible_os_family != "Windows"
+
+      when: inventory_hostname in groups['linux_systems'] or inventory_hostname in groups['windows_systems']

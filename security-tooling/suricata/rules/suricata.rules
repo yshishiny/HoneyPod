@@ -1,0 +1,13 @@
+# ============================================================================
+# Basic Suricata Rules for HoneyPod
+# Foundation rule set for early alerts
+# ============================================================================
+
+# Basic network monitoring
+alert tcp any any -> any 80 (msg:"HTTP Traffic Detected"; flow:established,to_server; content:"GET|20|"; http_method; sid:100; rev:1;)
+alert tcp any any -> any 443 (msg:"HTTPS Traffic Detected"; flow:established,to_server; sid:101; rev:1;)
+alert tcp any any -> any 443 (msg:"TLS Certificate Check"; flow:established,to_server; tls.version; sid:102; rev:1;)
+
+# Suspicious connections
+alert ip any any -> 192.168.40.0/25 any (msg:"Connection to Honeypot Zone"; sid:200; rev:1;)
+alert ip 192.168.40.0/25 any -> any any (msg:"Traffic from Honeypot Zone"; sid:201; rev:1;)

@@ -1,0 +1,32 @@
+---
+# ============================================================================
+# Group Variables: SIEM and Monitoring
+# ============================================================================
+
+# Beats configuration
+enable_filebeat: true
+enable_auditbeat: true
+enable_metricbeat: true
+enable_wineventlogbeat: true
+
+# Elasticsearch connection
+elasticsearch_host: "{{ siem_elasticsearch_host }}"
+elasticsearch_port: "{{ siem_elasticsearch_port }}"
+elasticsearch_protocol: http
+
+# Filebeat configuration
+filebeat_modules:
+  - system
+  - auditd
+  - windows
+  - syslog
+
+# Auditbeat configuration
+auditbeat_modules:
+  - auditd
+  - file_integrity
+  - process
+
+# Metric indices
+metrics_collection_interval: 10s
+logs_collection_interval: 10s

@@ -1,0 +1,249 @@
+# ============================================================================
+# HoneyPod Terraform Configuration Template - Example/Reference
+# ============================================================================
+# COPY THIS FILE TO terraform.tfvars AND EDIT VALUES FOR YOUR ENVIRONMENT
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   # Edit terraform.tfvars with your settings
+#   terraform init
+#   terraform plan
+#   terraform apply
+# ============================================================================
+
+# ============================================================================
+# Hyper-V Connection Configuration
+# ============================================================================
+# For local host (recommended for testing), leave blank (uses current credentials)
+
+# EXAMPLE: Remote Hyper-V host
+# hyperv_host = "192.168.1.50"
+# hyperv_user = "Administrator"
+# hyperv_password = "YourPasswordHere"
+
+hyperv_host = ""
+hyperv_user = ""
+hyperv_password = ""
+hyperv_https = true
+hyperv_insecure = true
+hyperv_timeout = 300
+
+# ============================================================================
+# VM Storage Locations
+# ============================================================================
+# REQUIRED: Create these directories before running terraform apply
+#
+# Windows PowerShell (as Administrator):
+#   New-Item -ItemType Directory -Path "C:\Hyper-V\VMs" -Force
+#   New-Item -ItemType Directory -Path "C:\Hyper-V\Templates" -Force
+#
+# Create VM templates with names:
+#   - Windows2022-Template (Windows Server 2022 VHDX)
+#   - Windows10-Template (Windows 10 Pro VHDX)
+#   - Ubuntu22-Template (Ubuntu 22.04 LTS VHDX)
+
+vm_storage_path = "C:\\Hyper-V\\VMs"
+vm_templates_path = "C:\\Hyper-V\\Templates"
+
+# ============================================================================
+# Lab Configuration
+# ============================================================================
+lab_domain = "corp.local"
+lab_timezone = "UTC"
+environment = "lab"
+project = "HoneyPod"
+
+# ============================================================================
+# Server VM Configuration (Domain Controller)
+# ============================================================================
+# Role: Active Directory, DNS, DHCP
+# Recommended minimum: 4GB RAM, 4 vCPUs
+# Created: 1 instance (dc-honeypod-01 @ 192.168.20.10)
+
+server_memory = 4096
+server_vcpus = 4
+
+# ============================================================================
+# Endpoint VM Configuration (Windows 10 Clients)
+# ============================================================================
+# Role: User workstations for attack simulation
+# Recommended minimum: 2GB RAM, 2 vCPUs per instance
+# Created: 2 instances
+#   - ep-honeypod-01 @ 192.168.10.11
+#   - ep-honeypod-02 @ 192.168.10.12
+#
+# To add more endpoints, modify the 'vms' map in main.tf
+
+endpoint_memory = 2048
+endpoint_vcpus = 2
+
+# ============================================================================
+# SIEM Server Configuration (ELK Stack)
+# ============================================================================
+# Role: Centralized logging, detection, alerting
+# Components: Elasticsearch, Logstash, Kibana
+# Recommended: 8GB RAM, 4 vCPUs
+# Created: 1 instance (siem-honeypod-01 @ 192.168.50.10)
+#
+# Access Kibana: http://192.168.50.10:5601
+
+siem_memory = 8192
+siem_vcpus = 4
+
+# ============================================================================
+# Caldera C2 Server Configuration
+# ============================================================================
+# Role: Automated attack simulation and adversary emulation
+# Platform: MITRE Caldera
+# Recommended: 2GB RAM, 2 vCPUs
+# Created: 1 instance (caldera-honeypod-01 @ 192.168.60.10)
+#
+# Access Console: http://192.168.60.10:8888
+# Default user: admin (set on first login)
+
+caldera_memory = 2048
+caldera_vcpus = 2
+
+# ============================================================================
+# Deception Layer Configuration (Honeypots)
+# ============================================================================
+# Role: Decoys and early warning system
+# Tools: Cowrie (SSH/Telnet honeypot), OpenCanary (service honeypot)
+# Recommended: 1GB RAM, 1 vCPU
+# Created: 1 instance (deception-honeypod-01 @ 192.168.40.10)
+#
+# Services exposed:
+#   - SSH (2222): Cowrie
+#   - Telnet (2323): Cowrie
+#   - FTP (21): OpenCanary
+#   - HTTP (80): OpenCanary
+#   - HTTPS (443): OpenCanary
+#   - SMB (445): OpenCanary
+
+deception_memory = 1024
+deception_vcpus = 1
+
+# ============================================================================
+# VM Wait Configuration
+# ============================================================================
+# Wait for VMs to fully boot and acquire IP addresses before Terraform completes
+vm_wait_for_state = "Running"
+vm_wait_for_ip = true
+
+# ============================================================================
+# Network Configuration
+# ============================================================================
+# Enable VLAN isolation between security zones (recommended)
+enable_vlan_isolation = true
+
+# Enable NAT for external internet access to lab VMs (optional)
+network_nat_enabled = false
+
+# ============================================================================
+# TOTAL LAB RESOURCE REQUIREMENTS
+# ============================================================================
+# 6 VMs (simplified deployment):
+# ├── 1x Domain Controller (Windows Server 2022)    : 4GB RAM + 4 vCPU
+# ├── 2x Endpoints (Windows 10)                     : 2GB + 2 vCPU each
+# ├── 1x SIEM (Ubuntu 22.04)                        : 8GB + 4 vCPU
+# ├── 1x Caldera C2 (Ubuntu 22.04)                  : 2GB + 2 vCPU
+# └── 1x Honeypots (Ubuntu 22.04)                   : 1GB + 1 vCPU
+#
+# TOTAL: ~19GB RAM + ~17 vCPUs = ~28GB with overhead
+#
+# Host hardware requirements:
+#   Minimum: 32GB RAM, 16 vCPUs (tight, not recommended)
+#   Recommended: 48GB+ RAM, 24+ vCPUs
+#   Storage: 150GB+ SSD (OS + VMs + Docker images)
+#
+# Network requirements:
+#   - Hyper-V capable CPU (Intel VT-x, AMD-V)
+#   - Network adapter for external connectivity
+#   - No IP conflicts with 192.168.10.0/22 range
+# ============================================================================
+
+# ============================================================================
+# DEPLOYMENT STEPS
+# ============================================================================
+# 1. Prepare Hyper-V Host:
+#    - Enable Hyper-V role (if not already)
+#    - Create VM storage directories
+#    - Create VM template VHDX files
+#    - Create virtual switches (or let Terraform create them)
+#
+# 2. Prepare Terraform:
+#    - Copy this file: cp terraform.tfvars.example terraform.tfvars
+#    - Edit terraform.tfvars with your values
+#    - Run: terraform init
+#
+# 3. Deploy Infrastructure:
+#    - Dry-run: terraform plan
+#    - Deploy: terraform apply
+#    - Verify: Get-VM -ComputerName localhost
+#
+# 4. Configure with Ansible:
+#    - Update ansible/inventory/hosts with IPs from terraform output
+#    - Run: ansible-playbook -i ansible/inventory/hosts site.yml
+#
+# 5. Verify Services:
+#    - Ping all VMs
+#    - Check AD: nslookup dc-honeypod-01
+#    - Check SIEM: curl http://192.168.50.10:9200/_health
+#    - Check Caldera: curl http://192.168.60.10:8888
+# ============================================================================
+# ============================================================================
+
+linux_image_publisher = "Canonical"
+linux_image_offer = "0001-com-ubuntu-server-jammy"
+
+# ============================================================================
+# Virtual Machine Count and Sizing
+# ============================================================================
+
+# Number of Windows 10 endpoints to deploy (typically 5)
+endpoint_count = 5
+
+# Number of Linux workstations (typically 1)
+linux_workstation_count = 1
+
+# VM sizing (Azure SKUs)
+# For lab: Standard_B2s ($0.10/hr), Standard_B2ms ($0.20/hr)
+# For production-like: Standard_B4ms ($0.41/hr), Standard_D4s_v3 ($0.50/hr)
+endpoint_vm_size = "Standard_B2s"
+server_vm_size   = "Standard_B4ms"
+siem_vm_size     = "Standard_D4s_v3"  # Needs more resources for ELK stack
+caldera_vm_size  = "Standard_B2s"
+
+# ============================================================================
+# Snapshot Configuration
+# ============================================================================
+
+# Enable automated pre-exercise snapshots (required for fast reset)
+enable_snapshots = true
+
+# Snapshot retention (days) - older snapshots are automatically deleted
+snapshot_retention_days = 30
+
+# ============================================================================
+# DEPLOYMENT COST ESTIMATION
+# ============================================================================
+# 
+# Default configuration monthly cost (24/7 operation):
+# - 1 DC (B4ms)              = $0.41/hr   =  $300/month
+# - 5 Endpoints (B2s x5)     = $0.50/hr   =  $360/month
+# - 1 Linux WKS (B2s)        = $0.10/hr   =   $73/month
+# - 1 DB Server (B4ms)       = $0.41/hr   =  $300/month
+# - 1 Web Server (B4ms)      = $0.41/hr   =  $300/month
+# - 1 SIEM (D4s_v3)          = $0.50/hr   =  $360/month
+# - 1 Caldera (B2s)          = $0.10/hr   =   $73/month
+# - 2 Honeypots (B2s x2)     = $0.20/hr   =  $146/month
+# - Storage (snapshots + OS) =            =  ~$200/month
+# ────────────────────────────────────────────────────────
+# TOTAL ESTIMATED COST      ~$2,100/month (24/7 operation)
+#
+# Cost optimization tips:
+# - Deallocate VMs outside exercise hours (saves ~80%)
+# - Use reserved instances (saves ~30% over 1-year)
+# - Use spot instances for non-critical services (saves ~60%)
+#
+# ============================================================================

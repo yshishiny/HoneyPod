@@ -1,0 +1,82 @@
+---
+# ============================================================================
+# Cowrie SSH/Telnet Honeypot Installation
+# ============================================================================
+
+- name: Install Cowrie dependencies
+  apt:
+    name:
+      - python3-dateutil
+      - python3-cryptography
+      - python3-six
+      - libmpfr4
+      - libgmp3-dev
+      - libffi-dev
+      - libssl-dev
+      - libtwistedweb-python
+      - python3-dev
+    state: present
+
+- name: Add cowrie user
+  user:
+    name: cowrie
+    home: /home/cowrie
+    shell: /bin/bash
+    comment: "Cowrie SSH Honeypot"
+    createhome: yes
+
+- name: Clone Cowrie repository
+  git:
+    repo: https://github.com/cowrie/cowrie.git
+    dest: /home/cowrie/cowrie
+    depth: 1
+    version: v2.4.0
+  become_user: cowrie
+
+- name: Install Python dependencies for Cowrie
+  pip:
+    requirements: /home/cowrie/cowrie/requirements.txt
+    state: present
+
+- name: Create Cowrie config directory
+  file:
+    path: /home/cowrie/cowrie/etc
+    state: directory
+    owner: cowrie
+    group: cowrie
+
+- name: Deploy Cowrie configuration
+  copy:
+    src: cowrie.cfg
+    dest: /home/cowrie/cowrie/etc/cowrie.cfg
+    owner: cowrie
+    group: cowrie
+    mode: '0644'
+
+- name: Create Cowrie systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=Cowrie SSH/Telnet Honeypot
+      After=network.target
+      
+      [Service]
+      Type=simple
+      User=cowrie
+      WorkingDirectory=/home/cowrie/cowrie
+      ExecStart=/home/cowrie/cowrie/bin/cowrie start
+      ExecStop=/home/cowrie/cowrie/bin/cowrie stop
+      Restart=on-failure
+      RestartSec=10
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/cowrie.service
+    mode: '0644'
+
+- name: Enable and start Cowrie
+  systemd:
+    name: cowrie
+    state: started
+    enabled: yes
+    daemon_reload: yes

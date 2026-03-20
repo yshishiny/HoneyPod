@@ -1,0 +1,17 @@
+---
+# ============================================================================
+# SIEM Agent Role - Main tasks
+# Deploys Filebeat, Auditbeat, and rsyslog for log forwarding
+# ============================================================================
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: yes
+
+- name: SIEM Agent tasks for Linux
+  include_tasks: linux.yml
+  when: ansible_os_family == 'Debian'
+
+- name: SIEM Agent tasks for Windows
+  include_tasks: windows.yml
+  when: ansible_os_family == 'Windows'

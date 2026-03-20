@@ -1,0 +1,79 @@
+---
+# ============================================================================
+# Application Deployment (Web + Database)
+# ============================================================================
+
+- name: Install system dependencies
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - build-essential
+      - nodejs
+      - npm
+      - postgresql
+      - postgresql-contrib
+    state: present
+    update_cache: yes
+
+- name: Create application directory
+  file:
+    path: /opt/honeypod-app
+    state: directory
+    mode: '0755'
+
+- name: Install Node.js application dependencies
+  npm:
+    path: /opt/honeypod-app
+    state: present
+  when: false  # Placeholder for actual app deployment
+
+- name: Start PostgreSQL service
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Create honeypod database user
+  postgresql_user:
+    name: honeypod
+    password: "Lab@honeypod_db"
+    state: present
+  become_user: postgres
+
+- name: Create honeypod database
+  postgresql_db:
+    name: honeypod
+    owner: honeypod
+    state: present
+  become_user: postgres
+
+- name: Create application systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=HoneyPod Web Application
+      After=network.target postgresql.service
+      
+      [Service]
+      Type=simple
+      User=www-data
+      WorkingDirectory=/opt/honeypod-app
+      ExecStart=/usr/bin/node /opt/honeypod-app/server.js
+      Restart=on-failure
+      RestartSec=10
+      Environment="NODE_ENV=production"
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/honeypod-app.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start application
+  systemd:
+    name: honeypod-app
+    state: started
+    enabled: yes
+    daemon_reload: yes

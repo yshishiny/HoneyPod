@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - Log storage and search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
+    container_name: honeypod-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=honeypod-elastic-password-2024
+      - ELASTIC_SECURITY_ENROLLMENT_ENABLED=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - honeypod-security
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Logstash - Log ingestion and processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.1
+    container_name: honeypod-logstash
+    volumes:
+      - ./elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./elk/logstash-sysmon.conf:/usr/share/logstash/pipeline/logstash-sysmon.conf:ro
+      - ./elk/patterns/sysmon.grok:/usr/share/logstash/patterns/sysmon.grok:ro
+    environment:
+      - LS_JAVA_OPTS=-Xms512m -Xmx512m
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=honeypod-elastic-password-2024
+    ports:
+      - "5000:5000"
+      - "6514:6514/udp"
+      - "514:514/udp"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - honeypod-security
+    restart: unless-stopped
+
+  # Kibana - Visualization and dashboards
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.1
+    container_name: honeypod-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=honeypod-elastic-password-2024
+      - KIBANA_DEFAULTAPPID=discover
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - honeypod-security
+    restart: unless-stopped
+
+
+  # Redis - Caching for SIEM correlations
+  redis:
+    image: redis:7-alpine
+    container_name: honeypod-redis
+    command: redis-server --requirepass honeypod-redis-password-2024
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - honeypod-security
+    healthcheck:
+      test: redis-cli --raw incr ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  elasticsearch-data:
+    driver: local
+    name: honeypod-elasticsearch-data
+  redis-data:
+    driver: local
+    name: honeypod-redis-data
+
+networks:
+  honeypod-security:
+    name: honeypod-security
+    driver: bridge

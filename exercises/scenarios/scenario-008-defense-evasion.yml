@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 008: Defense Evasion & Obfuscation
+# Simulates T1027 (Obfuscated Files/Information), T1562 (Impair Defenses)
+# ============================================================================
+
+name: "Scenario 008: Defense Evasion & Anti-Forensics"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Hard"
+duration_minutes: 60
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Obfuscate malware to evade antivirus"
+  - "Disable security controls (Windows Defender, logging)"
+  - "Perform anti-forensics (log clearing, file wiping)"
+  - "Inject into legitimate processes"
+  - "Detect evasion and recovery techniques"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1027"
+    name: "Obfuscated Files or Information"
+    severity: "high"
+  - technique: "T1562.001"
+    name: "Impair Defenses - Disable or Modify Tools"
+    severity: "high"
+  - technique: "T1070.001"
+    name: "Indicator Removal - Clear Windows Event Logs"
+    severity: "high"
+  - technique: "T1036.003"
+    name: "Masquerading - Rename System Utilities"
+    severity: "medium"
+
+d3fend_countermeasures:
+  - "CM-0025: Behavior Analysis"
+  - "CM-0026: Tamper Detection"
+  - "CM-0027: Audit Log Protection (Write-Once)"
+  - "CM-0028: Immutable Logging"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "windows_endpoints"
+  
+  procedures:
+    1:
+      name: "Malware Obfuscation"
+      technique: "T1027"
+      steps:
+        - "Encrypt malware payload with XOR/AES"
+        - "Implement polymorphic code variations"
+        - "Add junk code and dead code paths"
+      expected_outcome: "Obfuscated malware evades AV"
+      
+    2:
+      name: "Disable Defenses"
+      technique: "T1562.001"
+      steps:
+        - "Disable Windows Defender via Group Policy"
+        - "Disable Windows Update service"
+        - "Disable Windows Firewall"
+      expected_outcome: "Security controls disabled"
+      
+    3:
+      name: "Log Clearing"
+      technique: "T1070.001"
+      steps:
+        - "Clear Windows Event Viewer logs"
+        - "Clear PowerShell history"
+        - "Delete command-line history"
+      expected_outcome: "Attack history removed from logs"
+      
+    4:
+      name: "Process Injection"
+      technique: "T1055.001"
+      steps:
+        - "Inject payload into explorer.exe"
+        - "Hide from process list"
+        - "Maintain persistence"
+      expected_outcome: "Malware hidden in legitimate process"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "Log Tampering Detection"
+      description: "Detect clearing of Windows Event Logs"
+      target: "Log truncation alerts"
+      points: 20
+      
+    - name: "Defense Evasion Detection"
+      description: "Detect disabling of security tools"
+      target: "≥80% detection"
+      points: 20
+      
+    - name: "Process Injection Detection"
+      description: "Detect suspicious process injection"
+      target: "Memory modification alerts"
+      points: 15
+      
+    - name: "Response & Remediation"
+      description: "Restore security controls and logs"
+      target: "Recovery from tamper"
+      points: 15
+
+  detection_opportunities:
+    - "Audit logs showing security tool disable attempts"
+    - "Immutable logs detecting truncation attempts"
+    - "Sysmon Event ID 10: Process memory access"
+    - "Sysmon Event ID 8: CreateRemoteThread detection"
+    - "Windows Defender state monitoring"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Evasion Implementation"
+    duration: "20 minutes"
+    actions:
+      - red_team_executes_procedures_1_2
+      - blue_team_notices_disabled_controls
+      
+  phase_2:
+    name: "Anti-Forensics"
+    duration: "20 minutes"
+    actions:
+      - red_team_executes_procedures_3_4
+      - blue_team_detects_log_tampering
+      
+  phase_3:
+    name: "Recovery & Forensics"
+    duration: "20 minutes"
+    actions:
+      - blue_team_restores_backups
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    obfuscation_success: 12
+    defense_disable: 15
+    log_clearing: 18
+    process_injection: 15
+    total_possible: 60
+    
+  blue_team:
+    tamper_detection: 20
+    evasion_detection: 20
+    injection_detection: 15
+    recovery_success: 15
+    incident_response: 10
+    total_possible: 80

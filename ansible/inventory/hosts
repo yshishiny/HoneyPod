@@ -1,0 +1,91 @@
+# ============================================================================
+# HoneyPod Ansible Inventory
+# Generated from Terraform outputs or manually populated
+# Usage: ansible-playbook site.yml -i inventory/hosts
+# ============================================================================
+
+[all:vars]
+# Common settings for all hosts
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_connection_timeout=30
+
+# Lab settings
+lab_domain=corp.local
+lab_timezone=UTC
+
+# Credentials (OVERRIDE THESE IN VAULT!)
+domain_admin_user=honeyadmin
+domain_admin_password=HoneyPod@DomainAdmin2024!
+local_admin_user=honeyadmin
+local_admin_password=HoneyPod@LocalAdmin2024!
+honeyadmin_password=HoneyPod@Honeyadmin2024!
+
+# SIEM settings
+siem_elasticsearch_host=192.168.50.10
+siem_elasticsearch_port=9200
+siem_agent_user=elastic
+siem_agent_password=!ChangeMe@Elastic2024
+
+# Caldera settings
+caldera_host=192.168.60.10
+caldera_port=8888
+caldera_admin_user=admin
+caldera_admin_password=!ChangeMe@Caldera2024
+
+# ============================================================================
+# DOMAIN CONTROLLERS
+# ============================================================================
+[domain_controllers]
+dc-honeypod-01 ansible_host=192.168.20.10 ansible_connection=winrm zone=server role=dc os=Windows
+
+# ============================================================================
+# WINDOWS ENDPOINTS
+# ============================================================================
+[windows_endpoints]
+ep-honeypod-01 ansible_host=192.168.10.11 ansible_connection=winrm zone=user role=endpoint os=Windows
+ep-honeypod-02 ansible_host=192.168.10.12 ansible_connection=winrm zone=user role=endpoint os=Windows
+
+# ============================================================================
+# LINUX WORKSTATIONS
+# ============================================================================
+[linux_workstations]
+lnx-honeypod-01 ansible_host=192.168.10.50 ansible_user=honeyadmin zone=user role=workstation os=Linux
+
+# ============================================================================
+# SIEM / MONITORING
+# ============================================================================
+[security_servers]
+siem-honeypod-01 ansible_host=192.168.50.10 ansible_user=honeyadmin zone=security role=siem os=Linux
+
+# ============================================================================
+# CALDERA / ATTACK SIMULATION
+# ============================================================================
+[simulation_servers]
+caldera-honeypod-01 ansible_host=192.168.60.10 ansible_user=honeyadmin zone=simulation role=caldera os=Linux
+
+# ============================================================================
+# DECEPTION LAYER / HONEYPOTS
+# ============================================================================
+[deception_servers]
+deception-honeypod-01 ansible_host=192.168.40.10 ansible_user=honeyadmin zone=deception role=honeypots os=Linux
+
+# ============================================================================
+# HOST GROUPS FOR PLAYBOOK TARGETING
+# ============================================================================
+[windows_systems:children]
+domain_controllers
+windows_endpoints
+
+[linux_systems:children]
+linux_workstations
+security_servers
+simulation_servers
+deception_servers
+
+[all_honeypod_systems:children]
+domain_controllers
+windows_endpoints
+linux_workstations
+security_servers
+simulation_servers
+deception_servers

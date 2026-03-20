@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 003: Lateral Movement via WMI
+# Simulates T1047 (WMI), T1021.006 (Remote Services - WinRM)
+# ============================================================================
+
+name: "Scenario 003: Lateral Movement & WMI Abuse"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Hard"
+duration_minutes: 60
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Laterally move from ep-01 to other endpoints"
+  - "Use WMI for remote command execution"
+  - "Exploit AD credentials for movement"
+  - "Establish C2 communication on multiple systems"
+  - "Detect lateral movement techniques"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1021.002"
+    name: "Remote Services - SMB/Windows Admin Shares"
+    severity: "high"
+  - technique: "T1021.006"
+    name: "Remote Services - Windows Remote Management (WinRM)"
+    severity: "high"
+  - technique: "T1047"
+    name: "Windows Management Instrumentation"
+    severity: "high"
+  - technique: "T1196"
+    name: "BITS Jobs"
+    severity: "medium"
+
+d3fend_countermeasures:
+  - "CM-0005: Network Segmentation"
+  - "CM-0006: WMI Restrictions"
+  - "CM-0007: Lateral Movement Detection"
+  - "CM-0008: Credential Guard"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "windows_endpoints"
+  
+  procedures:
+    1:
+      name: "Enumerate network"
+      technique: "T1018"
+      steps:
+        - "Execute 'net view' to enumerate hosts"
+        - "Query AD for computer objects"
+        - "Ping sweep across subnet"
+      expected_outcome: "Map of target network"
+      
+    2:
+      name: "Lateral movement via WMI"
+      technique: "T1047"
+      steps:
+        - "Use 'wmic' to execute remote commands"
+        - "Deploy payload via WMI"
+        - "Execute on ep-02, ep-03"
+      expected_outcome: "Commands execute on remote systems"
+      
+    3:
+      name: "WinRM exploitation"
+      technique: "T1021.006"
+      steps:
+        - "Enable WinRM via group policy"
+        - "Create reverse shell via WinRM session"
+        - "Establish PS Remoting connection"
+      expected_outcome: "Remote PS sessions on multiple hosts"
+      
+    4:
+      name: "Module load evasion"
+      technique: "T1036"
+      steps:
+        - "Execute reflective DLL injection"
+        - "Bypass Windows Defender"
+        - "Hide malware from detection"
+      expected_outcome: "Malware executes without detection"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "WMI Execution Detection"
+      description: "Detect WMI usage for lateral movement"
+      target: "≥50% detection"
+      points: 20
+      
+    - name: "Network Reconnaissance Detection"
+      description: "Detect network enumeration attempts"
+      target: "≥75% detection"
+      points: 15
+      
+    - name: "SMB Communication Detection"
+      description: "Detect SMB traffic to unusual ports/times"
+      target: "≥60% detection"
+      points: 15
+      
+    - name: "Alert Correlation"
+      description: "Connect events across multiple systems"
+      target: "≥1 correlation rule triggered"
+      points: 20
+
+  detection_opportunities:
+    - "Sysmon Process Creation: wmic.exe, winrm.exe"
+    - "Network traffic on ports 139, 445, 5985, 5986"
+    - "Registry modification via WMI"
+    - "PowerShell command-line logging"
+    - "Windows Event Log: WinRM service activity"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Reconnaissance"
+    duration: "15 minutes"
+    actions:
+      - red_team_executes_procedures_1
+      - blue_team_monitors_dashboards
+      
+  phase_2:
+    name: "Lateral Movement"
+    duration: "25 minutes"
+    actions:
+      - red_team_executes_procedures_2_3_4
+      - blue_team_responds_to_alerts
+      
+  phase_3:
+    name: "Containment & Analysis"
+    duration: "20 minutes"
+    actions:
+      - both_teams_review_results
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    objective_1_enumeration: 10
+    objective_2_wmi_success: 20
+    objective_3_winrm_success: 20
+    objective_4_evasion_success: 10
+    total_possible: 60
+    
+  blue_team:
+    wmi_detection: 20
+    reconnaissance_detection: 15
+    smb_detection: 15
+    correlation_detection: 20
+    incident_response: 10
+    total_possible: 80

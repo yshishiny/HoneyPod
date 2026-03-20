@@ -1,0 +1,49 @@
+#!/bin/bash
+# ============================================================================
+# Template for Cowrie SSH Honeypot Configuration
+# ============================================================================
+
+[honeypot]
+hostname = ONSYSTEM
+port = {{ honeypot_cowrie_ssh_port }}
+listen_endpoints =
+  tcp:{{ honeypot_cowrie_ssh_port }}:interface=0.0.0.0
+  tcp:{{ honeypot_cowrie_telnet_port }}:interface=0.0.0.0
+report_file = var/lib/cowrie/cowrie.json
+
+[output_influxdb]
+enabled = false
+
+[output_file]
+logfile = var/log/cowrie/cowrie.log
+timestampformat = %Y-%m-%d %H:%M:%S
+
+[database]
+db_engine = sqlite
+db_file = var/lib/cowrie/cowrie.db
+
+[output_syslog]
+enabled = true
+address = {{ siem_elasticsearch_host }}
+port = 514
+facility = LOG_USER
+tag = cowrie
+
+[ssh]
+port = {{ honeypot_cowrie_ssh_port }}
+pool_size = 0
+userdb = etc/userdb.txt
+version_ident = OpenSSH_7.4
+listen_endpoints = tcp:{{ honeypot_cowrie_ssh_port }}:interface=0.0.0.0
+sftp_enabled = true
+banner_file = etc/banner
+timestamp_format = %Y-%m-%d %H:%M:%S
+
+[telnet]
+port = {{ honeypot_cowrie_telnet_port }}
+bind_port = {{ honeypot_cowrie_telnet_port }}
+listen_endpoints = tcp:{{ honeypot_cowrie_telnet_port }}:interface=0.0.0.0
+
+[filesystem]
+data_path = var/lib/cowrie/data
+fake_filesystem_file = etc/fs.pickle

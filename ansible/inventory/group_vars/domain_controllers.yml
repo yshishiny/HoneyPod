@@ -1,0 +1,25 @@
+---
+# ============================================================================
+# Group Variables: Domain Controllers
+# ============================================================================
+
+ansible_connection: winrm
+ansible_port: 5985
+ansible_winrm_transport: basic
+ansible_winrm_read_timeout_sec: 60
+
+# DC-specific variables
+dc_netbios_name: CORP
+domain_admin_password: "HoneyPod@DomainAdmin2024!"
+forest_mode: 2016
+domain_mode: 2016
+
+# DNS Configuration
+dns_server_ips:
+  - 127.0.0.1  # Self (DC)
+  - 8.8.8.8    # Google DNS as fallback
+
+# DHCP Configuration (optional)
+enable_dhcp: false
+dhcp_scope_start: 192.168.10.100
+dhcp_scope_end: 192.168.10.200

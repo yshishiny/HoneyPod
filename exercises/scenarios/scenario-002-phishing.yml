@@ -1,0 +1,205 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 002: Phishing and Initial Access
+# Simulates T1566 (Phishing) → T1204 (User Execution) → persistence
+# ============================================================================
+
+name: "Scenario 002: Phishing Campaign & Credential Harvesting"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Medium"
+duration_minutes: 45
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Execute phishing email delivery simulation"
+  - "Trigger user execution of malicious attachment"
+  - "Establish persistence via scheduled task"
+  - "Exfiltrate credentials to C2 server"
+  - "Detect phishing and persistence techniques"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1566.002"
+    name: "Phishing - Spearphishing Link"
+    severity: "critical"
+  - technique: "T1204.001"
+    name: "User Execution - Malicious Link"
+    severity: "critical"
+  - technique: "T1547.001"
+    name: "Boot or Logon Autostart Execution - Registry Run Keys"
+    severity: "high"
+  - technique: "T1059.001"
+    name: "Command and Scripting Interpreter - PowerShell"
+    severity: "high"
+
+d3fend_countermeasures:
+  - "CM-0001: User Awareness Training"
+  - "CM-0002: Email Content Filtering"
+  - "CM-0003: Process Execution Monitoring"
+  - "CM-0004: Registry Modification Alerting"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "windows_endpoints"
+  
+  procedures:
+    1:
+      name: "Craft phishing email"
+      technique: "T1566.002"
+      steps:
+        - "Create convincing social engineering email"
+        - "Embed link to malicious payload"
+        - "Deliver to ep-01 through simulated email client"
+      expected_outcome: "User clicks link"
+      
+    2:
+      name: "Initial compromise"
+      technique: "T1204.001"
+      steps:
+        - "User downloads malicious file"
+        - "Execute downloaded file"
+        - "Initial payload establishes C2 connection"
+      expected_outcome: "Reverse shell on ep-01"
+      
+    3:
+      name: "Establish persistence"
+      technique: "T1547.001"
+      steps:
+        - "Create scheduled task for persistence"
+        - "Registry modification for autostart"
+        - "Verify task execution on reboot"
+      expected_outcome: "Persistence mechanism active"
+      
+    4:
+      name: "Credential access"
+      technique: "T1555"
+      steps:
+        - "Enumerate browser credentials"
+        - "Access Windows credential vault"
+        - "Exfiltrate credentials to C2"
+      expected_outcome: "Credentials sent to Caldera"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "Phishing Detection Rate"
+      description: "Detect at least 1 of 4 phishing attempts"
+      target: "≥25% detection"
+      points: 10
+      
+    - name: "Initial Access Detection"
+      description: "Detect malicious file download or execution"
+      target: "≥50% detection"
+      points: 15
+      
+    - name: "Persistence Detection"
+      description: "Detect registry modification or scheduled task creation"
+      target: "≥75% detection"
+      points: 20
+      
+    - name: "Response Time (TTD)"
+      description: "Time to detect first compromise"
+      target: "<5 minutes"
+      points: 15
+
+  detection_opportunities:
+    - "Email gateway logs showing phishing link"
+    - "Filebeat detecting suspicious PowerShell execution"
+    - "Sysmon registry modification events"
+    - "Network telemetry showing C2 communication"
+    - "Process execution highlighting suspicious parents"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Assault"
+    duration: "15 minutes"
+    actions:
+      - red_team_executes_procedures_1_2
+      - blue_team_monitors_dashboards
+      
+  phase_2:
+    name: "Consolidation"
+    duration: "15 minutes"
+    actions:
+      - red_team_executes_procedures_3_4
+      - blue_team_responds_to_alerts
+      
+  phase_3:
+    name: "Analysis"
+    duration: "15 minutes"
+    actions:
+      - both_teams_review_results
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    objective_1_phishing_success: 10  # User clicked link
+    objective_2_execution_success: 15  # File executed
+    objective_3_persistence_confirmed: 20  # Persisted on system
+    objective_4_credential_exfil: 15  # Credentials stolen
+    total_possible: 60
+    
+  blue_team:
+    phishing_detection: 10
+    initial_access_detection: 15
+    persistence_detection: 20
+    response_time_bonus: 15
+    zero_false_positives_bonus: 10
+    total_possible: 80
+
+# ============================================================================
+# REQUIRED PRE-EXERCISE SETUP
+# ============================================================================
+
+prerequisites:
+  - "dc-01: Domain functional"
+  - "ep-01 through ep-05: Domain-joined and Sysmon installed"
+  - "siem-01: Receiving logs from all endpoints"
+  - "attack-caldera-01: Ready to execute attacks"
+  - "Snapshot: Pre-exercise snapshot of all production systems"
+
+# ============================================================================
+# DEBRIEF QUESTIONS
+# ============================================================================
+
+debrief:
+  discussion_points:
+    - "How did users identify phishing emails?"
+    - "What detection methods worked best?"
+    - "What were false positives?"
+    - "How could defense be improved?"
+    - "What was time-to-detect (TTD)?"
+    - "What was time-to-respond (TTR)?"
+
+# ============================================================================
+# REFERENCES
+# ============================================================================
+
+references:
+  - url: "https://attack.mitre.org/techniques/T1566/002/"
+    title: "MITRE ATT&CK: Phishing - Spearphishing Link"
+  - url: "https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-atp/investigate-incidents-windows-defender-advanced-threat-protection"
+    title: "Microsoft: Investigate Incidents"

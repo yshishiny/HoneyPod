@@ -1,0 +1,110 @@
+---
+# ============================================================================
+# Linux Hardening Tasks
+# ============================================================================
+
+- name: Update all packages
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+
+- name: Install security tools
+  apt:
+    name:
+      - auditd
+      - aide
+      - fail2ban
+      - openssh-server
+      - openssl
+      - rsyslog
+      - apparmor
+      - apparmor-utils
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Configure auditd
+  lineinfile:
+    path: /etc/audit/rules.d/audit.rules
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - "-w /etc/passwd -p wa -k identity"
+    - "-w /etc/group -p wa -k identity"
+    - "-w /etc/sudoers -p wa -k scope"
+    - "-w /var/log/faillog -p wa -k logins"
+    - "-w /var/log/lastlog -p wa -k logins"
+    - "-w /var/log/tallylog -p wa -k logins"
+    - "-a always,exit -F arch=b64 -S execve -F uid=0 -k exec"
+
+- name: Start auditd
+  systemd:
+    name: auditd
+    enabled: yes
+    state: started
+
+- name: Configure SSH hardening
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+    - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries 3" }
+    - { regexp: "^#?ClientAliveInterval", line: "ClientAliveInterval 300" }
+  notify: restart ssh
+
+- name: Configure UFW firewall
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    state: enabled
+  loop:
+    - { rule: "allow", port: "22", proto: "tcp" }
+    - { rule: "allow", port: "514", proto: "udp" }  # syslog
+  when: enable_firewall | default(true)
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop:
+    - bluetooth
+    - cups
+  ignore_errors: yes
+  when: disable_unnecessary_services | default(true)
+
+- name: Configure rsyslog for centralized logging
+  lineinfile:
+    path: /etc/rsyslog.conf
+    regexp: "^#?\\*\\.\\* @@"
+    line: "*.*  @@{{ siem_server }}:{{ siem_port }}"
+    create: yes
+  notify: restart rsyslog
+  when: siem_server is defined
+
+- name: Set kernel parameters
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+  loop:
+    - { name: "net.ipv4.conf.all.send_redirects", value: "0" }
+    - { name: "net.ipv4.conf.default.send_redirects", value: "0" }
+    - { name: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }
+    - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+
+- name: Set file permissions
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/etc/passwd", mode: "0644" }
+    - { path: "/etc/shadow", mode: "0640" }
+    - { path: "/etc/group", mode: "0644" }
+    - { path: "/etc/gshadow", mode: "0640" }

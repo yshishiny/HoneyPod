@@ -1,0 +1,89 @@
+---
+# ============================================================================
+# Domain Join - Join Windows endpoints to corp.local domain
+# ============================================================================
+
+- name: Configure static IP address
+  win_shell: |
+    $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+    if ($adapter) {
+      Remove-NetIPAddress -InterfaceAlias $adapter.Name -Confirm:$false -ErrorAction SilentlyContinue
+      Remove-NetRoute -InterfaceAlias $adapter.Name -Confirm:$false -ErrorAction SilentlyContinue 2>$null
+      New-NetIPAddress -InterfaceAlias $adapter.Name -IPAddress "{{ ansible_host }}" -PrefixLength 24 -DefaultGateway "192.168.10.1" -ErrorAction SilentlyContinue
+    }
+  register: ip_config
+  ignore_errors: yes
+
+- name: Set DNS servers to point to Domain Controller
+  win_dns_client:
+    adapter_names: '*'
+    dns_servers:
+      - "192.168.20.10"
+      - "8.8.8.8"
+
+- name: Rename computer
+  win_shell: |
+    $computerName = "{{ inventory_hostname | upper }}"
+    if ((Get-ComputerInfo).CsComputerName -ne $computerName) {
+      Rename-Computer -NewName $computerName
+    }
+  register: rename_result
+  ignore_errors: yes
+
+- name: Wait for DNS to resolve DC
+  win_shell: |
+    $startTime = Get-Date
+    while ((Get-Date) -lt $startTime.AddMinutes(5)) {
+      try {
+        [System.Net.Dns]::GetHostAddresses("dc-honeypod-01") | Out-Null
+        exit 0
+      } catch {
+        Start-Sleep -Seconds 5
+      }
+    }
+    exit 1
+  register: dns_wait
+  ignore_errors: yes
+
+- name: Join system to domain
+  win_domain_membership:
+    dns_domain_name: "{{ lab_domain }}"
+    domain_admin_user: "{{ domain_admin_user }}@{{ lab_domain }}"
+    domain_admin_password: "{{ domain_admin_password }}"
+    state: domain
+  register: domain_join_result
+  ignore_errors: yes
+
+- name: Reboot after domain join
+  win_reboot:
+    msg: "Rebooting after domain join"
+    reboot_timeout: 600
+  when: domain_join_result.changed or rename_result.changed
+
+- name: Wait for system after reboot
+  win_wait_for_serial:
+    timeout: 300
+
+- name: Verify domain membership
+  win_shell: |
+    (Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain
+  register: domain_check
+  ignore_errors: yes
+
+- name: Register domain-join fact
+  set_fact:
+    domain_joined: "{{ 'True' in domain_check.stdout }}"
+    cacheable: yes
+  win_wait_for_serial:
+    timeout: 300
+  when: domain_join_result.changed
+
+- name: Verify domain membership
+  win_shell: |
+    (Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain
+  register: domain_check
+  changed_when: false
+
+- name: Display domain status
+  debug:
+    msg: "{{ ansible_hostname }} is part of domain: {{ domain_check.stdout_lines[0] }}"

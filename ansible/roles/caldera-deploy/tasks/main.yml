@@ -1,0 +1,99 @@
+---
+# ============================================================================
+# Caldera C2 Attack Simulation Platform Deployment
+# ============================================================================
+
+- name: Install Caldera dependencies
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-dev
+      - git
+      - curl
+      - wget
+    state: present
+    update_cache: yes
+
+- name: Clone Caldera repository
+  git:
+    repo: https://github.com/mitre/caldera.git
+    dest: /opt/caldera
+    depth: 1
+    version: "v5.0.0"
+
+- name: Install Caldera Python dependencies
+  pip:
+    requirements: /opt/caldera/requirements.txt
+    state: present
+
+- name: Create Caldera user
+  user:
+    name: caldera
+    home: /opt/caldera
+    shell: /bin/bash
+    comment: "Caldera C2 Service"
+    createhome: no
+
+- name: Set Caldera directory ownership
+  file:
+    path: /opt/caldera
+    owner: caldera
+    group: caldera
+    recurse: yes
+    mode: '0755'
+
+- name: Create Caldera configuration
+  copy:
+    content: |
+      {
+        "port": 8888,
+        "log_level": "INFO",
+        "debug": false,
+        "log_dir": "/var/log/caldera",
+        "plugins": [
+          "access_control",
+          "atomic",
+          "evals",
+          "gameboard",
+          "response"
+        ]
+      }
+    dest: /opt/caldera/conf/default.yml
+    owner: caldera
+    group: caldera
+    mode: '0644'
+
+- name: Create Caldera systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=MITRE Caldera C2 Framework
+      After=network.target
+      
+      [Service]
+      Type=simple
+      User=caldera
+      WorkingDirectory=/opt/caldera
+      ExecStart=/usr/bin/python3 /opt/caldera/server.py
+      Restart=on-failure
+      RestartSec=10
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/caldera.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start Caldera
+  systemd:
+    name: caldera
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Wait for Caldera to be ready
+  wait_for:
+    port: 8888
+    delay: 5
+    timeout: 30

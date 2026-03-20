@@ -1,0 +1,347 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 009: Advanced Multi-Stage Attack
+# Simulates complete attack chain: Initial Access → Lateral Movement → Data Theft
+# ============================================================================
+
+name: "Scenario 009: Advanced Persistent Threat (APT) Simulation"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Expert"
+duration_minutes: 90
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Execute sophisticated multi-stage attack"
+  - "Maintain persistence across multiple systems"
+  - "Perform privilege escalation"
+  - "Access sensitive data"
+  - "Detect and respond to advanced threats"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1566.002"
+    name: "Phishing - Spearphishing Link"
+    severity: "critical"
+  - technique: "T1547.001"
+    name: "Boot or Logon Autostart Execution - Registry Run Keys"
+    severity: "high"
+  - technique: "T1021.002"
+    name: "Remote Services - SMB/Admin Shares"
+    severity: "high"
+  - technique: "T1098.004"
+    name: "Account Manipulation - SSH Authorized Keys"
+    severity: "high"
+  - technique: "T1003.001"
+    name: "Credential Dumping - LSASS"
+    severity: "critical"
+  - technique: "T1041"
+    name: "Exfiltration Over C2 Channel"
+    severity: "critical"
+
+d3fend_countermeasures:
+  - "CM-0001: User Awareness Training"
+  - "CM-0005: Network Segmentation"
+  - "CM-0008: Privilege Management"
+  - "CM-0009: LSASS Protection"
+  - "CM-0021: Data Loss Prevention"
+  - "CM-0027: Audit Log Protection"
+
+# ============================================================================
+# RED TEAM PROCEDURES - ATTACK TIMELINE
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "production_range"
+  estimated_ttr: "45 minutes to full compromise"
+  
+  procedures:
+    1:
+      name: "Initial Access - Phishing"
+      technique: "T1566.002"
+      timing: "0 min"
+      steps:
+        - "Deliver spearphishing email to ep-01"
+        - "User clicks link and downloads file"
+        - "Execute malware payload"
+      expected_outcome: "User machine compromised"
+      
+    2:
+      name: "Persistence - Registry & Tasks"
+      technique: "T1547.001"
+      timing: "5 min"
+      steps:
+        - "Create registry run key"
+        - "Schedule malware as scheduled task"
+        - "Verify persistence confirmed"
+      expected_outcome: "Survives logoff/reboot"
+      
+    3:
+      name: "Privilege Escalation"
+      technique: "T1548"
+      timing: "10 min"
+      steps:
+        - "Execute privilege escalation exploit"
+        - "Gain SYSTEM privileges"
+        - "Disable UAC"
+      expected_outcome: "SYSTEM access obtained"
+      
+    4:
+      name: "Lateral Movement - SMB"
+      technique: "T1021.002"
+      timing: "15 min"
+      steps:
+        - "Execute lateral movement via SMB"
+        - "Access \\\\dc-01 and \\\\srv-01"
+        - "Deploy agents to multiple systems"
+      expected_outcome: "Domain controller & servers compromised"
+      
+    5:
+      name: "Credential Harvesting"
+      technique: "T1003.001"
+      timing: "25 min"
+      steps:
+        - "Dump LSASS memory on DC"
+        - "Extract domain admin credentials"
+        - "Perform pass-the-hash lateral movement"
+      expected_outcome: "Domain credentials obtained"
+      
+    6:
+      name: "SSH Key Injection"
+      technique: "T1098.004"
+      timing: "30 min"
+      steps:
+        - "Inject SSH keys into Linux systems"
+        - "Gain persistent access via SSH"
+        - "Establish Linux C2 channel"
+      expected_outcome: "Linux systems compromised"
+      
+    7:
+      name: "Data Discovery & Exfiltration"
+      technique: "T1083 → T1041"
+      timing: "40 min"
+      steps:
+        - "Enumerate sensitive files across network"
+        - "Stage database backups"
+        - "Exfiltrate via C2 channel"
+      expected_outcome: "Sensitive data stolen"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "Early Detection (MITRE Stage 1)"
+      description: "Detect phishing & initial access"
+      target: "Within 10 minutes"
+      points: 15
+      
+    - name: "Mid-Stage Detection (MITRE Stage 2-3)"
+      description: "Detect privilege escalation or lateral movement"
+      target: "Within 25 minutes"
+      points: 20
+      
+    - name: "Late-Stage Detection (MITRE Stage 4-5)"
+      description: "Detect credential harvesting or exfiltration"
+      target: "Within 45 minutes"
+      points: 20
+      
+    - name: "Incident Response"
+      description: "Isolate compromised systems and stop exfiltration"
+      target: "Stop attack before critical data loss"
+      points: 20
+      
+    - name: "Post-Incident Activity"
+      description: "Restore systems and remediate vulnerabilities"
+      target: "Complete cleanup and patch"
+      points: 5
+
+  detection_chain:
+    1: "Email phishing detection"
+    2: "File execution logging"
+    3: "Registry & task creation monitoring"
+    4: "Privilege escalation detection"
+    5: "SMB lateral movement alerts"
+    6: "LSASS access detection"
+    7: "C2 communication detection"
+    8: "Data exfiltration detection"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1_initial_access:
+    name: "Initial Access (T0 → T10)"
+    duration: "10 minutes"
+    red_team_actions:
+      - send_phishing_email
+      - Wait for user click
+      - Execute malware
+    blue_team_actions:
+      - Monitor email gateway
+      - Watch for suspicious downloads
+      - Alert on antivirus detections
+    detection_difficulty: "Easy - obvious phishing signals"
+    
+  phase_2_persistence:
+    name: "Persistence & Escalation (T10 → T25)"
+    duration: "15 minutes"
+    red_team_actions:
+      - establish_persistence
+      - escalate_privileges
+      - enumerate_network
+    blue_team_actions:
+      - Detect registry modifications
+      - Alert on UAC disabling
+      - Monitor for lateral movement prep
+    detection_difficulty: "Medium - behavioral analysis required"
+    
+  phase_3_lateral_movement:
+    name: "Lateral Movement (T25 → T40)"
+    duration: "15 minutes"
+    red_team_actions:
+      - dump_credentials
+      - Move to domain_controller
+      - Move to web_servers
+      - Move to database_servers
+    blue_team_actions:
+      - Detect SMB lateral movement
+      - Alert on LSASS access
+      - Monitor for pass-the-hash
+      - Active hunting
+    detection_difficulty: "Hard - requires cross-system correlation"
+    
+  phase_4_data_theft:
+    name: "Data Exfiltration (T40 → T90)"
+    duration: "25 minutes"
+    red_team_actions:
+      - Discover sensitive_data
+      - Stage_for_exfil
+      - Exfiltrate via C2
+      - Cover_tracks
+    blue_team_actions:
+      - Detect unusual data access patterns
+      - Alert on large outbound transfers
+      - Block C2 channels
+      - Initiate incident response
+    detection_difficulty: "Medium - DLP and network monitoring"
+
+# ============================================================================
+# TEAM ROLE ASSIGNMENTS
+# ============================================================================
+
+team_roles:
+  red_team:
+    - role: "Attacker 1"
+      responsibility: "Initial access & social engineering"
+      
+    - role: "Attacker 2"
+      responsibility: "Lateral movement & privilege escalation"
+      
+    - role: "Attacker 3"
+      responsibility: "Data discovery & exfiltration"
+      
+  blue_team:
+    - role: "SOC Analyst 1"
+      responsibility: "Email security & log review"
+      
+    - role: "SOC Analyst 2"
+      responsibility: "Endpoint monitoring & alerting"
+      
+    - role: "Incident Commander"
+      responsibility: "Coordination & containment"
+      
+    - role: "Forensics Specialist"
+      responsibility: "Investigation & evidence collection"
+
+# ============================================================================
+# SCORING - DETAILED BREAKDOWN
+# ============================================================================
+
+scoring:
+  red_team:
+    initial_access_success: 15
+    persistence_success: 10
+    escalation_success: 10
+    lateral_movement_success: 15
+    credential_access_success: 15
+    exfiltration_success: 20
+    anti_forensics_success: 10
+    total_possible: 95
+    
+  blue_team:
+    early_detection_t10: 15
+    detection_t25: 20
+    detection_t45: 20
+    containment_success: 20
+    remediation_success: 10
+    zero_critical_data_loss: 15
+    incident_documentation: 10
+    total_possible: 110
+
+# ============================================================================
+# SUCCESS CRITERIA MATRIX
+# ============================================================================
+
+attack_success_conditions:
+  full_compromise:
+    - "Compromise 5+ Windows systems"
+    - "Compromise 2+ Linux systems"
+    - "Exfiltrate sensitive data >100MB"
+    - "Achieve persistence on 8+ systems"
+    - "complete_timeline: >85 minutes"
+    
+  partial_compromise:
+    - "Compromise 3-4 Windows systems"
+    - "Exfiltrate <100MB"
+    - "complete_timeline: 55-75 minutes"
+    
+  defense_success:
+    - "Detect attack within 30 minutes"
+    - "Isolate compromised systems"
+    - "Prevent data exfiltration (>75%)"
+    - "Recover all systems"
+
+# ============================================================================
+# POST-EXERCISE ACTIVITIES
+# ============================================================================
+
+debrief:
+  discussion_topics:
+    - "Detection gaps in the defense"
+    - "What worked: For attack, for defense"
+    - "What failed: For attack, for defense"
+    - "Timeline analysis: When was earliest detection opportunity?"
+    - "Cross-team observations"
+    - "Process improvements"
+    
+  required_artifacts:
+    - "Timeline of all security events"
+    - "Alert correlation analysis"
+    - "MITRE ATT&CK kill chain analysis"
+    - "Root cause analysis"
+    - "Remediation plan"
+
+# ============================================================================
+# REFERENCES & FRAMEWORKS
+# ============================================================================
+
+references:
+  - title: "MITRE ATT&CK Framework"
+    url: "https://attack.mitre.org"
+  - title: "Lockheed Martin Cyber Kill Chain"
+    url: "https://www.lockheedmartin.com/en-us/capabilities/cyber/cyber-kill-chain.html"
+  - title: "D3FEND Framework"
+    url: "https://d3fend.mitre.org"
+  - title: "Purple Team Framework"
+    url: "https://purpleteam-labs.com"

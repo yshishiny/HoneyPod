@@ -1,0 +1,51 @@
+################################ Sysmon Configuration #################################
+# Template for Windows Sysmon logging configuration
+# Forwards events to Elasticsearch via Filebeat/Winlogbeat
+
+Channel: Microsoft-Windows-Sysmon/Operational
+LogFile: %SystemRoot%\System32\winevt\Logs\Microsoft-Windows-Sysmon~Operational.evtx
+
+RuleGroup name="Network Connections" groupRelation="or">
+  EventFiltering>
+    ProcessCreate onmatch="exclude">
+      CommandLine condition="contains all">cscript.exe</CommandLine>
+      CommandLine condition="contains all">wscript.exe</CommandLine>
+    /ProcessCreate>
+    NetworkConnect onmatch="include">
+      DestinationPort condition="is">443</DestinationPort>
+      DestinationPort condition="is">80</DestinationPort>
+      DestinationPort condition="is">21</DestinationPort>
+      DestinationPort condition="is">22</DestinationPort>
+      DestinationPort condition="is">3389</DestinationPort>
+    /NetworkConnect>
+    ProcessCreate onmatch="include">
+      CommandLine condition="contains">powershell</CommandLine>
+      CommandLine condition="contains">cmd.exe</CommandLine>
+      CommandLine condition="contains">wmic</CommandLine>
+    /ProcessCreate>
+  /EventFiltering>
+/RuleGroup>
+
+RuleGroup name="File Access" groupRelation="or">
+  EventFiltering>
+    FileCreate onmatch="include">
+      TargetFilename condition="contains">System32\drivers\etc</TargetFilename>
+      TargetFilename condition="contains">.exe</TargetFilename>
+      TargetFilename condition="contains">.dll</TargetFilename>
+      TargetFilename condition="contains">.ps1</TargetFilename>
+    /FileCreate>
+    FileModified onmatch="include">
+      TargetFilename condition="contains">System32</TargetFilename>
+    /FileModified>
+  /EventFiltering>
+/RuleGroup>
+
+RuleGroup name="Registry" groupRelation="or">
+  EventFiltering>
+    RegistryEvent onmatch="include">
+      TargetObject condition="contains">CurrentVersion\Run</TargetObject>
+      TargetObject condition="contains">Services\</TargetObject>
+      TargetObject condition="contains">SecurityProviders</TargetObject>
+    /RegistryEvent>
+  /EventFiltering>
+/RuleGroup>

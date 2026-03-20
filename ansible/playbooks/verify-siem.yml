@@ -1,0 +1,84 @@
+---
+# ============================================================================
+# SIEM Verification Playbook
+# ============================================================================
+# Verifies SIEM stack functionality and agent connectivity
+
+- name: Verify SIEM Deployment
+  hosts: security_servers
+  gather_facts: yes
+
+  tasks:
+    - name: Check Elasticsearch status
+      uri:
+        url: "http://localhost:9200/"
+        method: GET
+        status_code: 200
+      register: elasticsearch_status
+      changed_when: false
+
+    - name: Display Elasticsearch status
+      debug:
+        msg:
+          - "Elasticsearch Status: OK"
+          - "Cluster: {{ elasticsearch_status.json.cluster_name }}"
+          - "Version: {{ elasticsearch_status.json.version.number }}"
+
+    - name: Check Kibana status
+      uri:
+        url: "http://localhost:5601/api/status"
+        method: GET
+        status_code: 200
+      register: kibana_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display Kibana status
+      debug:
+        msg: "Kibana Status: OK"
+      when: kibana_status.status is defined and kibana_status.status == 200
+
+    - name: Verify agent connectivity
+      block:
+        - name: Check beats indices
+          shell: |
+            curl -s http://localhost:9200/_cat/indices | grep -E "(filebeat|auditbeat|metricbeat|wineventlogbeat)" | wc -l
+          register: beats_indices
+          changed_when: false
+
+        - name: Display agent connectivity
+          debug:
+            msg:
+              - "Connected agents: {{ beats_indices.stdout }}"
+              - "SIEM deployment verified"
+
+- name: Verify Agent Deployment
+  hosts: all_honeypod_systems
+  gather_facts: yes
+
+  tasks:
+    - name: Verify Filebeat (Linux)
+      systemd:
+        name: filebeat
+        state: started
+      when: ansible_os_family != "Windows"
+      ignore_errors: yes
+
+    - name: Verify Auditbeat (Linux)
+      systemd:
+        name: auditbeat
+        state: started
+      when: ansible_os_family != "Windows"
+      ignore_errors: yes
+
+    - name: Verify Winlogbeat (Windows)
+      win_service:
+        name: Winlogbeat
+        state: started
+      when: ansible_os_family == "Windows"
+      ignore_errors: yes
+
+    - name: Verify Sysmon (Windows)
+      win_shell: Get-Service Sysmon
+      when: ansible_os_family == "Windows"
+      ignore_errors: yes

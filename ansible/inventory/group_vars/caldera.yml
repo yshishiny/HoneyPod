@@ -1,0 +1,43 @@
+---
+# ============================================================================
+# Group Variables: Caldera C2 Platform
+# ============================================================================
+
+# Caldera installation
+caldera_version: "latest"
+caldera_install_path: /opt/caldera
+caldera_venv_path: /opt/caldera/.venv
+
+# Caldera API configuration
+caldera_api_host: "0.0.0.0"
+caldera_api_port: "{{ caldera_port }}"
+caldera_api_username: "{{ caldera_admin_user }}"
+caldera_api_password: "{{ caldera_admin_password }}"
+
+# Caldera plugins
+caldera_plugins:
+  - rest-api
+  - access
+  - atomic
+  - debrief
+  - emu
+  - gameboard
+  - manx
+  - response
+  - sandcat
+
+# C2 agents
+caldera_agent_type: "sandcat"
+caldera_agent_implant_name: "sandcat-go"
+
+# Adversary profiles
+caldera_enabled_adversaries:
+  - "Privilege Escalation"
+  - "Lateral Movement"
+  - "Defense Evasion"
+  - "Credential Access"
+  - "Exfiltration"
+
+# Campaign/Operation settings
+caldera_campaign_name: "HoneyPod-Lab"
+caldera_operation_timeout: 3600  # 1 hour

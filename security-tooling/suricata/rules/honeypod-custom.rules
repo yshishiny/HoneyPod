@@ -1,0 +1,40 @@
+# ============================================================================
+# HoneyPod Custom Suricata Rules
+# Detects attack techniques specific to lab scenarios
+# ============================================================================
+
+# Category: Lateral Movement
+# T1021 - Remote Services
+
+alert ip any any -> any 3389 (msg:"Lateral Movement - RDP Connection"; flow:established,to_server; sid:1001; rev:1;)
+alert ip any any -> any 445 (msg:"Lateral Movement - SMB Connection"; flow:established,to_server; sid:1002; rev:1;)
+alert ip any any -> any 22 (msg:"Lateral Movement - SSH Connection"; flow:established,to_server; sid:1003; rev:1;)
+alert ip any any -> any 5985 (msg:"Lateral Movement - WinRM HTTP"; flow:established,to_server; sid:1004; rev:1;)
+alert ip any any -> any 5986 (msg:"Lateral Movement - WinRM HTTPS"; flow:established,to_server; sid:1005; rev:1;)
+
+# Category: Command and Control
+# T1071 - Application Layer Protocol
+
+alert http any any -> any any (msg:"C2 - Suspicious User-Agent"; content:"User-Agent|3a|"; content:"curl|7c|wget|7c|python"; http_header; sid:2001; rev:1;)
+alert dns $HOME_NET any -> any 53 (msg:"DNS - Suspicious Domain Query"; pcre:"/\.(ru|cn|top)\s*$/i"; sid:2002; rev:1;)
+
+# Category: Exfiltration
+# T1041 - Exfiltration Over C2 Channel
+
+alert http any $HOME_NET -> any any (msg:"Exfiltration - Large upload"; content:"POST|20|"; http_method; filesize:>1000000; sid:3001; rev:1;)
+alert ip $HOME_NET any -> any 53 (msg:"Exfiltration - DNS Tunnel Attempt"; dsize:>200; sid:3002; rev:1;)
+
+# Category: Defense Evasion
+# T1562 - Impair Defenses
+
+alert process any any -> any any (msg:"Defense Evasion - AV Disable Attempt"; pcre:"/Set-MpPreference.*-DisableRealtimeMonitoring/i"; sid:4001; rev:1;)
+
+# Category: Credential Access
+# T1110 - Brute Force
+
+alert ip any 22 -> any any (msg:"Brute Force - SSH Attempt"; flow:established,from_server; content:"Invalid user"; sid:5001; rev:1;)
+
+# Category: Initial Access
+# T1566 - Phishing
+
+alert http any any -> any any (msg:"Phishing - Suspicious Email Click"; content:".exe"; http_footer; sid:6001; rev:1;)

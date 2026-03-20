@@ -1,0 +1,9 @@
+---
+# ============================================================================
+# Handlers for Hardening service restarts
+# ============================================================================
+
+- name: reload sysctl
+  systemd:
+    name: procps
+    state: restarted

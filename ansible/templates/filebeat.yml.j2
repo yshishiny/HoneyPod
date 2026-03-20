@@ -1,0 +1,80 @@
+###################### Filebeat Configuration #############################
+# Author: HoneyPod Deployment Framework
+# Purpose: Log shipping agent for Elasticsearch/Kibana SIEM
+
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 10s
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/*.log
+    - /var/log/**/*.log
+  exclude_files: ['.gz$']
+  multiline.pattern: '^\['
+  multiline.negate: true
+  multiline.match: after
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/syslog
+    - /var/log/auth.log
+  fields:
+    type: syslog
+
+- type: log
+  enabled: true
+  paths:
+    - /var/log/audit/audit.log
+  fields:
+    type: auditd
+
+processors:
+  - add_kubernetes_metadata: ~
+  - add_docker_metadata: ~
+  - add_process_metadata:
+      match_pids: ["systemd", "sshd", "auditd"]
+  - add_fields:
+      target: honeypod
+      fields:
+        zone: {{ zone }}
+        role: {{ role }}
+        host: {{ inventory_hostname }}
+        environment: lab
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+output.elasticsearch:
+  enabled: true
+  hosts:
+    - "{{ siem_elasticsearch_host }}:{{ siem_elasticsearch_port }}"
+  protocol: "http"
+  index: "honeypod-%{+yyyy.MM.dd}"
+  indices:
+    - index: "honeypod-syslog-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "syslog"
+    - index: "honeypod-audit-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "audit"
+
+setup.kibana:
+  host: "{{ kibana_host }}:{{ kibana_port }}"
+  protocol: "http"
+
+setup.dashboards.enabled: true
+
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts:
+    - "{{ siem_elasticsearch_host }}:{{ siem_elasticsearch_port }}"

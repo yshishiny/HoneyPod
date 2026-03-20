@@ -1,0 +1,31 @@
+---
+# ============================================================================
+# Handlers for SIEM Agent services
+# ============================================================================
+
+- name: restart filebeat
+  systemd:
+    name: filebeat
+    state: restarted
+    daemon_reload: yes
+  listen: restart filebeat services
+
+- name: restart auditbeat
+  systemd:
+    name: auditbeat
+    state: restarted
+    daemon_reload: yes
+  listen: restart auditbeat services
+
+- name: restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+    daemon_reload: yes
+  listen: restart rsyslog service
+
+- name: restart winlogbeat
+  win_service:
+    name: winlogbeat
+    state: restarted
+  listen: restart winlogbeat service

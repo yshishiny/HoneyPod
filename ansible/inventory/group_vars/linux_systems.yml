@@ -1,0 +1,25 @@
+---
+# ============================================================================
+# Group Variables: Linux Systems
+# ============================================================================
+
+ansible_user: honeyadmin
+ansible_ssh_key_file: ~/.ssh/id_rsa
+ansible_become: yes
+ansible_become_method: sudo
+
+# Linux hardening
+enable_firewall: true
+firewall_service: ufw
+
+# SSH Configuration
+ssh_port: 22
+enable_ssh_hardening: true
+permit_root_login: "prohibit-password"
+
+# Logging
+enable_syslog: true
+enable_auditd: true
+
+# Package configuration
+auto_update_enabled: true

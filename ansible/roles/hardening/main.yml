@@ -1,0 +1,11 @@
+---
+# ============================================================================
+# Hardening Role - Main Tasks
+# OS-level security baseline for all systems (Windows & Linux)
+# ============================================================================
+
+- name: Include OS-specific hardening
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+
+- name: Apply common security settings
+  import_tasks: common.yml

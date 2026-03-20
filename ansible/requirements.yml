@@ -1,0 +1,44 @@
+---
+# ============================================================================
+# Ansible Galaxy Role Requirements
+# Install with: ansible-galaxy install -r requirements.yml
+# ============================================================================
+
+collections:
+  - name: ansible.windows
+    version: ">=1.14.0"
+  - name: community.windows
+    version: ">=1.14.0"
+  - name: ansible.posix
+    version: ">=1.5.0"
+  - name: community.general
+    version: ">=7.0.0"
+
+roles:
+  # Network roles
+  - name: geerlingguy.firewall
+    src: https://github.com/geerlingguy/ansible-role-firewall.git
+    version: main
+
+  # System hardening
+  - name: dev-sec.linux-hardening
+    src: https://github.com/dev-sec/ansible-linux-hardening.git
+    version: master
+
+  # Logging and monitoring
+  - name: geerlingguy.filebeat
+    src: https://github.com/geerlingguy/ansible-role-filebeat.git
+    version: main
+
+  - name: geerlingguy.auditbeat
+    src: https://github.com/geerlingguy/ansible-role-auditbeat.git
+    version: main
+
+  # Docker (for SIEM services)
+  - name: geerlingguy.docker
+    src: https://github.com/geerlingguy/ansible-role-docker.git
+    version: main
+
+  - name: geerlingguy.docker-compose
+    src: https://github.com/geerlingguy/ansible-role-docker-compose.git
+    version: main

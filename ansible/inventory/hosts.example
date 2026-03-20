@@ -1,0 +1,110 @@
+# ============================================================================
+# HoneyPod Ansible Inventory (Example)
+# Generated automatically from Terraform outputs
+# Or manually populate this file with your lab systems
+# ============================================================================
+#
+# Usage:
+#   ansible-playbook site.yml -i inventory/hosts
+#   ansible all -m ping
+#
+# To generate from Terraform:
+#   python3 scripts/generate-inventory.py ../terraform/outputs.json > inventory/hosts
+# ============================================================================
+
+[all:vars]
+# Common variables for all systems
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_ssh_key_file='~/.ssh/id_rsa'
+honeypod_domain='corp.local'
+
+# ============================================================================
+# DOMAIN CONTROLLERS (Windows)
+# ============================================================================
+[domain_controllers]
+dc-01 ansible_host=192.168.20.10 zone=server role=dc os=Windows
+
+# ============================================================================
+# WINDOWS ENDPOINTS (User Zone)
+# ============================================================================
+[windows_endpoints]
+ep-01 ansible_host=192.168.10.10 zone=user role=endpoint os=Windows
+ep-02 ansible_host=192.168.10.11 zone=user role=endpoint os=Windows
+ep-03 ansible_host=192.168.10.12 zone=user role=endpoint os=Windows
+ep-04 ansible_host=192.168.10.13 zone=user role=endpoint os=Windows
+ep-05 ansible_host=192.168.10.14 zone=user role=endpoint os=Windows
+
+# ============================================================================
+# LINUX WORKSTATIONS (User Zone)
+# ============================================================================
+[linux_workstations]
+lnx-wks-01 ansible_host=192.168.10.50 ansible_user=honeyadmin zone=user role=workstation os=Linux
+
+# ============================================================================
+# DATABASE SERVERS (Server Zone)
+# ============================================================================
+[database_servers]
+db-01 ansible_host=192.168.20.30 ansible_user=honeyadmin zone=server role=database os=Linux
+
+# ============================================================================
+# WEB SERVERS (DMZ Zone)
+# ============================================================================
+[web_servers]
+web-01 ansible_host=192.168.30.20 ansible_user=honeyadmin zone=dmz role=web os=Linux
+
+# ============================================================================
+# SIEM SERVERS (Security Plane)
+# ============================================================================
+[security_servers]
+siem-01 ansible_host=192.168.50.20 ansible_user=honeyadmin zone=security role=siem os=Linux
+
+# ============================================================================
+# ATTACK SIMULATION (Caldera C2)
+# ============================================================================
+[simulation_servers]
+attack-caldera-01 ansible_host=192.168.60.20 ansible_user=honeyadmin zone=simulation role=caldera os=Linux
+
+# ============================================================================
+# DECEPTION LAYER (Honeypots)
+# ============================================================================
+[deception_servers]
+canary-01 ansible_host=192.168.40.10 ansible_user=honeyadmin zone=deception role=canary os=Linux
+cowrie-01 ansible_host=192.168.40.20 ansible_user=honeyadmin zone=deception role=cowrie os=Linux
+
+# ============================================================================
+# GROUP AGGREGATIONS FOR PLAYBOOK TARGETING
+# ============================================================================
+
+[windows:children]
+domain_controllers
+windows_endpoints
+
+[linux:children]
+linux_workstations
+database_servers
+web_servers
+security_servers
+simulation_servers
+deception_servers
+
+[servers:children]
+database_servers
+web_servers
+security_servers
+simulation_servers
+
+[production_range:children]
+domain_controllers
+windows_endpoints
+linux_workstations
+database_servers
+web_servers
+
+[security_tooling:children]
+security_servers
+
+[deception:children]
+deception_servers
+
+[simulation:children]
+simulation_servers

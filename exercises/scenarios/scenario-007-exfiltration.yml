@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 007: Data Exfiltration & C2 Communication
+# Simulates T1041 (Exfiltration Over C2 Channel), T1071 (Application Layer Protocol)
+# ============================================================================
+
+name: "Scenario 007: Data Exfiltration & C2 Communication"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Hard"
+duration_minutes: 55
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Identify sensitive data on compromised system"
+  - "Package data for exfiltration"
+  - "Establish C2 command channel"
+  - "Transmit stolen data via C2"
+  - "Detect C2 communication patterns"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1041"
+    name: "Exfiltration Over C2 Channel"
+    severity: "critical"
+  - technique: "T1071.001"
+    name: "Application Layer Protocol - Web Protocols"
+    severity: "high"
+  - technique: "T1030"
+    name: "Data Transfer Size Limits"
+    severity: "medium"
+  - technique: "T1048.003"
+    name: "Exfiltration Over Alternative Protocol - DNS"
+    severity: "high"
+
+d3fend_countermeasures:
+  - "CM-0021: Data Loss Prevention (DLP)"
+  - "CM-0022: Network Traffic Analysis"
+  - "CM-0023: DNS Exfiltration Detection"
+  - "CM-0024: C2 Signature Detection"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "windows_endpoints"
+  
+  procedures:
+    1:
+      name: "Data Discovery"
+      technique: "T1083"
+      steps:
+        - "Enumerate file systems for sensitive files"
+        - "Search for *.docx, *.xlsx, *.pdf"
+        - "Locate database connection strings"
+      expected_outcome: "Sensitive data inventory"
+      
+    2:
+      name: "Data Staging"
+      technique: "T1074.001"
+      steps:
+        - "Copy identified files to staging directory"
+        - "Compress files for exfiltration"
+        - "Encrypt archive with XOR or AES"
+      expected_outcome: "Compressed & encrypted data package"
+      
+    3:
+      name: "C2 Communication"
+      technique: "T1071.001"
+      steps:
+        - "Establish HTTPS connection to C2 server"
+        - "Send C2 beacon with system information"
+        - "Receive command from C2"
+      expected_outcome: "C2 channel established"
+      
+    4:
+      name: "Data Exfiltration"
+      technique: "T1041"
+      steps:
+        - "Upload compressed data through C2 channel"
+        - "Verify data receipt on C2 server"
+        - "Delete local staging files"
+      expected_outcome: "Data exfiltrated successfully"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "C2 Signature Detection"
+      description: "Detect C2 communication patterns"
+      target: "≥75% detection"
+      points: 25
+      
+    - name: "Data Exfiltration Detection"
+      description: "Detect unusual data volumes leaving network"
+      target: "Anomalous outbound traffic"
+      points: 20
+      
+    - name: "DNS Tunnel Detection"
+      description: "Detect DNS exfiltration attempts"
+      target: "Large DNS TXT records"
+      points: 15
+      
+    - name: "Incident Response"
+      description: "Block C2 communication channels"
+      target: "Firewall rules, DNS sinkhole"
+      points: 15
+
+  detection_opportunities:
+    - "Network telemetry showing C2 user-agent strings"
+    - "Netflow/sFlow detecting unusual outbound connections"
+    - "DNS logs showing subdomain enumeration"
+    - "File system monitoring detecting compression tools"
+    - "Process monitoring showing network utilities"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Data Discovery & Staging"
+    duration: "15 minutes"
+    actions:
+      - red_team_executes_procedures_1_2
+      - blue_team_monitors_file_activity
+      
+  phase_2:
+    name: "C2 Establishment & Exfiltration"
+    duration: "25 minutes"
+    actions:
+      - red_team_executes_procedures_3_4
+      - blue_team_detects_c2_communication
+      
+  phase_3:
+    name: "Containment & Analysis"
+    duration: "15 minutes"
+    actions:
+      - blue_team_blocks_c2
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    data_discovery: 10
+    data_staging: 10
+    c2_establishment: 15
+    exfiltration_success: 25
+    total_possible: 60
+    
+  blue_team:
+    c2_detection: 25
+    exfiltration_detection: 20
+    dns_detection: 15
+    c2_blocking: 15
+    incident_response: 5
+    total_possible: 80

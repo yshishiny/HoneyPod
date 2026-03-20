@@ -1,0 +1,54 @@
+---
+# ============================================================================
+# Hardening Role - Main playbook
+# ============================================================================
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: yes
+
+- name: Hardening tasks for Debian/Ubuntu
+  include_tasks: debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Hardening tasks for Windows
+  include_tasks: windows.yml
+  when: ansible_os_family == 'Windows'
+
+- name: Enable and start auditd (Linux)
+  systemd:
+    name: auditd
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: ansible_os_family == 'Debian'
+
+- name: Enable and start firewall (Linux)
+  systemd:
+    name: ufw
+    state: started
+    enabled: yes
+  when: ansible_os_family == 'Debian'
+
+- name: Disable IPv6 (optional)
+  sysctl:
+    name: "{{ item }}"
+    value: '1'
+    sysctl_set: yes
+    state: present
+  loop:
+    - net.ipv6.conf.all.disable_ipv6
+    - net.ipv6.conf.default.disable_ipv6
+    - net.ipv6.conf.lo.disable_ipv6
+  when: ansible_os_family == 'Debian'
+
+- name: Set file permissions on sensitive files
+  file:
+    path: "{{ item }}"
+    mode: '0600'
+  loop:
+    - /etc/passwd
+    - /etc/shadow
+    - /etc/group
+  when: ansible_os_family == 'Debian'
+  ignore_errors: yes

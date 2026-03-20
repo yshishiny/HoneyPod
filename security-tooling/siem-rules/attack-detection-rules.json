@@ -1,0 +1,263 @@
+# ============================================================================
+# HoneyPod Detection Rules - Elasticsearch DSL
+# Maps MITRE ATT&CK techniques to detection queries
+# ============================================================================
+
+# T1110 - Brute Force: Password Guessing
+PUT _ilm/policy/honeypod-alerts
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0d",
+        "actions": {}
+      },
+      "warm": {
+        "min_age": "7d",
+        "actions": {
+          "set_priority": { "priority": 25 }
+        }
+      },
+      "cold": {
+        "min_age": "30d",
+        "actions": {}
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# Detection Rule: Failed SSH Login Attempts (T1110)
+POST _watcher/watch/t1110-ssh-brute-force
+{
+  "trigger": {
+    "schedule": { "interval": "5m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "process": "sshd" } },
+                { "match": { "tags": "failed_login" } },
+                { "range": { "@timestamp": { "gte": "now-5m" } } }
+              ]
+            }
+          },
+          "aggs": {
+            "failed_attempts": {
+              "terms": { "field": "hostname", "size": 100 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 5 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "SSH Brute Force detected: {{ctx.payload.aggregations.failed_attempts}}"
+      }
+    }
+  }
+}
+
+# Detection Rule: Suspicious PowerShell Execution (T1086, T1087)
+POST _watcher/watch/t1086-suspicious-powershell
+{
+  "trigger": {
+    "schedule": { "interval": "1m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "log_source": "windows" } },
+                { "range": { "@timestamp": { "gte": "now-1m" } } }
+              ],
+              "should": [
+                { "match": { "command_line": "powershell" } },
+                { "match": { "command_line": "-enc" } },
+                { "match": { "command_line": "-encodedcommand" } },
+                { "match": { "command_line": "FromBase64String" } }
+              ],
+              "minimum_should_match": 2
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 0 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "Suspicious PowerShell detected: {{ctx.payload.hits.hits.0}}"
+      }
+    }
+  }
+}
+
+# Detection Rule: LSASS Memory Access (T1555, T1110)
+POST _watcher/watch/t1555-credential-dumping
+{
+  "trigger": {
+    "schedule": { "interval": "2m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "event_type": "process_access" } },
+                { "match": { "target_process": "lsass.exe" } },
+                { "range": { "@timestamp": { "gte": "now-2m" } } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 0 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "LSASS Access (credential dumping attempt): {{ctx.payload.hits.hits.0}}"
+      }
+    }
+  }
+}
+
+# Detection Rule: Lateral Movement via SMB (T1021.002)
+POST _watcher/watch/t1021-smb-lateral-movement
+{
+  "trigger": {
+    "schedule": { "interval": "2m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "event_type": "network_connection" } },
+                { "match": { "dest_port": "445" } },
+                { "range": { "@timestamp": { "gte": "now-2m" } } }
+              ],
+              "filter": [
+                { "term": { "hostname.keyword": { "value": "ep-*" } } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 0 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "SMB lateral movement detected: {{ctx.payload.hits.hits.0}}"
+      }
+    }
+  }
+}
+
+# Detection Rule: Honeypot Engagement (T0000 - Custom)
+POST _watcher/watch/honeypot-engagement
+{
+  "trigger": {
+    "schedule": { "interval": "1m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "tags": "honeypot" } },
+                { "range": { "@timestamp": { "gte": "now-1m" } } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 0 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "HONEYPOT ENGAGED - HIGH PRIORITY: {{ctx.payload.hits.hits.0}}"
+      }
+    }
+  }
+}
+
+# Detection Rule: Process Injection (T1055)
+POST _watcher/watch/t1055-process-injection
+{
+  "trigger": {
+    "schedule": { "interval": "2m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "index": ["siem-*"],
+        "body": {
+          "query": {
+            "bool": {
+              "must": [
+                { "match": { "tags": "process_access" } },
+                { "range": { "@timestamp": { "gte": "now-2m" } } }
+              ],
+              "should": [
+                { "match": { "source_process": "explorer.exe" } },
+                { "match": { "source_process": "svchost.exe" } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": { "ctx.payload.hits.total.value": { "gt": 0 } }
+  },
+  "actions": {
+    "log_alert": {
+      "logging": {
+        "text": "Process injection detected: {{ctx.payload.hits.hits.0}}"
+      }
+    }
+  }
+}

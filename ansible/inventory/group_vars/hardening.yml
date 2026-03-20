@@ -1,0 +1,41 @@
+---
+# ============================================================================
+# Group Variables: Hardening Configuration
+# ============================================================================
+
+# CIS Benchmark recommendations
+enforce_cis_benchmark: true
+
+# Windows-specific hardening
+windows_hardening:
+  account_lockout_threshold: 5
+  account_lockout_duration: 30  # minutes
+  password_min_length: 14
+  password_max_age: 90  # days
+  tls_version: 1.2
+
+# Linux-specific hardening
+linux_hardening:
+  disable_unused_filesystems: true
+  disable_uncommon_protocols: true
+  enable_selinux: true
+  selinux_policy: targeted
+
+# Firewall rules (minimal, lab-focused)
+firewall_rules:
+  - direction: in
+    action: allow
+    protocol: tcp
+    port: 22      # SSH
+  - direction: in
+    action: allow
+    protocol: tcp
+    port: 3389    # RDP
+  - direction: in
+    action: allow
+    protocol: tcp
+    port: 5985    # WinRM
+  - direction: in
+    action: allow
+    protocol: tcp
+    port: 5986    # WinRM over HTTPS

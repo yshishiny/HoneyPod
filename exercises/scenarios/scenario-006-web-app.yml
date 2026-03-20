@@ -1,0 +1,168 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 006: Web Application Attack
+# Simulates T1190 (Exploit Public-Facing Application)
+# ============================================================================
+
+name: "Scenario 006: Web Application Exploitation"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Medium"
+duration_minutes: 50
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Identify web application vulnerabilities"
+  - "Exploit SQL injection vulnerability"
+  - "Achieve remote code execution via web app"
+  - "Access backend database"
+  - "Detect web application attacks"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1190"
+    name: "Exploit Public-Facing Application"
+    severity: "critical"
+  - technique: "T1005"
+    name: "Data from Local System"
+    severity: "high"
+  - technique: "T1020"
+    name: "Automated Exfiltration"
+    severity: "high"
+
+d3fend_countermeasures:
+  - "CM-0017: Web Application Firewall (WAF)"
+  - "CM-0018: SQL Injection Prevention (Parameterized Queries)"
+  - "CM-0019: Web Application Scanning"
+  - "CM-0020: HTTP Request Logging"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "web_servers"
+  target_group: "web_servers"
+  
+  procedures:
+    1:
+      name: "Reconnaissance"
+      technique: "T1592"
+      steps:
+        - "Enumerate web application endpoints"
+        - "Identify input validation flaws"
+        - "Detect SQL injection vulnerability in login form"
+      expected_outcome: "SQL injection identified"
+      
+    2:
+      name: "SQL Injection Exploitation"
+      technique: "T1190"
+      steps:
+        - "Craft SQL injection payload"
+        - "Bypass authentication logic"
+        - "Extract user credentials from database"
+      expected_outcome: "Database credentials obtained"
+      
+    3:
+      name: "Remote Code Execution"
+      technique: "T1059.007"
+      steps:
+        - "Use SQL injection for file write"
+        - "Write webshell to web root"
+        - "Execute arbitrary commands via webshell"
+      expected_outcome: "RCE via web application"
+      
+    4:
+      name: "Data Exfiltration"
+      technique: "T1041"
+      steps:
+        - "Extract sensitive data from database"
+        - "Exfiltrate to attacker server"
+        - "Cover tracks in logs"
+      expected_outcome: "Database exfiltration successful"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "SQL Injection Detection"
+      description: "Detect SQL injection attempts"
+      target: "≥80% detection"
+      points: 20
+      
+    - name: "Webshell Detection"
+      description: "Detect webshell upload/execution"
+      target: "≥90% detection"
+      points: 20
+      
+    - name: "Database Access Detection"
+      description: "Detect unusual database queries"
+      target: "Large data exports"
+      points: 15
+      
+    - name: "Incident Response"
+      description: "Block and remediate web app attack"
+      target: "Disable application, patch vulnerability"
+      points: 15
+
+  detection_opportunities:
+    - "WAF logs showing SQL injection payloads"
+    - "HTTP request logging with anomalous queries"
+    - "File system monitoring detecting webshell writes"
+    - "Database audit logs showing unauthorized queries"
+    - "Network traffic showing large data exfiltration"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Reconnaissance & Exploitation"
+    duration: "20 minutes"
+    actions:
+      - red_team_executes_procedures_1_2
+      - blue_team_monitors_web_logs
+      
+  phase_2:
+    name: "RCE & Data Theft"
+    duration: "20 minutes"
+    actions:
+      - red_team_executes_procedures_3_4
+      - blue_team_detects_exfiltration
+      
+  phase_3:
+    name: "Response & Remediation"
+    duration: "10 minutes"
+    actions:
+      - blue_team_blocks_attack
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    recon_success: 10
+    sql_injection_success: 15
+    rce_success: 15
+    exfiltration_success: 20
+    total_possible: 60
+    
+  blue_team:
+    sql_injection_detection: 20
+    webshell_detection: 20
+    database_detection: 15
+    timely_response: 15
+    remediation_success: 10
+    total_possible: 80

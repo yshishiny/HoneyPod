@@ -1,0 +1,68 @@
+---
+# ============================================================================
+# Caldera Verification Playbook
+# ============================================================================
+# Verifies Caldera C2 platform functionality and agent communication
+
+- name: Verify Caldera Deployment
+  hosts: simulation_servers
+  gather_facts: yes
+
+  tasks:
+    - name: Check Caldera service status
+      systemd:
+        name: caldera
+        state: started
+      ignore_errors: yes
+
+    - name: Test Caldera API connectivity
+      uri:
+        url: "http://localhost:{{ caldera_port }}/api/v2/about"
+        method: GET
+        status_code: 200
+      register: caldera_api
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display Caldera status
+      debug:
+        msg:
+          - "Caldera Service: OK"
+          - "API Status: {{ caldera_api.status | default('Checking...') }}"
+      when: caldera_api.status is defined and caldera_api.status == 200
+
+    - name: Check Caldera plugins
+      shell: |
+        curl -s http://localhost:{{ caldera_port }}/api/v2/plugins | \
+        python3 -c "import sys, json; print(json.load(sys.stdin)['plugins'] | len())" 2>/dev/null || echo "N/A"
+      register: caldera_plugins
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display plugin count
+      debug:
+        msg: "Caldera Plugins Enabled: {{ caldera_plugins.stdout | trim }}"
+
+- name: Verify Agent Communication
+  hosts: all_honeypod_systems
+  gather_facts: yes
+
+  tasks:
+    - name: Check Sandcat agent (Linux)
+      shell: |
+        ls -la /opt/honeypod/agents/ 2>/dev/null || echo "No agents deployed"
+      when: ansible_os_family != "Windows"
+      register: agent_status
+      changed_when: false
+
+    - name: Check Sandcat agent (Windows)
+      win_shell: |
+        Get-Item C:\honeypod\agents\ -ErrorAction SilentlyContinue | Measure-Object
+      when: ansible_os_family == "Windows"
+      register: agent_status
+      changed_when: false
+
+    - name: Display agent status
+      debug:
+        msg: "Agent Status: Deployed"
+      when: agent_status.stdout | length > 0

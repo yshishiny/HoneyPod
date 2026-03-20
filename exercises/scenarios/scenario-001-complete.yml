@@ -1,0 +1,215 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 001: Brute Force & Lateral Movement
+# (Complete version - scaffolding only previously)
+# ============================================================================
+
+name: "Scenario 001: Brute Force Attack & Lateral Movement"
+version: "2.0"
+date_created: "2026-03-18"
+difficulty: "Medium"
+duration_minutes: 45
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Execute SSH brute force attack against Linux servers"
+  - "Successfully gain access to db-01 database server"
+  - "Laterally move to Windows domain systems"
+  - "Establish command & control via Caldera"
+  - "Detect brute force and lateral movement techniques"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1110.001"
+    name: "Brute Force - Password Guessing"
+    severity: "critical"
+  - technique: "T1021.002"
+    name: "Remote Services - SMB/Windows Admin Shares"
+    severity: "high"
+  - technique: "T1021.001"
+    name: "Remote Services - Remote Desktop Protocol"
+    severity: "high"
+  - technique: "T1078.002"
+    name: "Valid Accounts - Domain Accounts"
+    severity: "high"
+
+d3fend_countermeasures:
+  - "CM-0001: Account Lockout Policy"
+  - "CM-0002: Intrusion Detection"
+  - "CM-0003: Multi-Factor Authentication"
+  - "CM-0004: Network Segmentation"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "database_servers,windows_endpoints"
+  
+  procedures:
+    1:
+      name: "SSH Brute Force"
+      technique: "T1110.001"
+      steps:
+        - "Launch SSH brute force attack on db-01 (192.168.20.30)"
+        - "Use common wordlist: rockyou.txt (subset)"
+        - "Target user: honeyadmin"
+      expected_outcome: "Successful login after ~50-100 attempts"
+      
+    2:
+      name: "SMB Lateral Movement"
+      technique: "T1021.002"
+      steps:
+        - "From db-01, enumerate SMB shares on DC"
+        - "Access \\\\dc-01\\\\ADMIN$"
+        - "Deploy payload via SMB"
+      expected_outcome: "Reverse shell on domain controller"
+      
+    3:
+      name: "Credential Harvesting"
+      technique: "T1003"
+      steps:
+        - "Extract domain hashes from DC"
+        - "Pass-the-hash attack to endpoints"
+        - "Gain access to ep-01 via RDP using stolen hash"
+      expected_outcome: "Access to ep-01 with domain admin credentials"
+      
+    4:
+      name: "Establish C2"
+      technique: "T1071.001"
+      steps:
+        - "Deploy Caldera agent on ep-01"
+        - "Agent checks in to Caldera C2"
+        - "Execute arbitrary commands via C2"
+      expected_outcome: "Full compromise chain complete"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "Brute Force Detection"
+      description: "Detect SSH brute force within 5 minutes"
+      target: "≥5 failed attempts from single source"
+      points: 20
+      
+    - name: "Lateral Movement Detection"
+      description: "Detect SMB or RDP lateral movement"
+      target: "Cross-system connection alerting"
+      points: 20
+      
+    - name: "Credential Access Detection"
+      description: "Detect hash extraction/pass-the-hash"
+      target: "Process memory/registry access detection"
+      points: 15
+      
+    - name: "Incident Response"
+      description: "Respond to detected activities"
+      target: "Account disable, network isolation"
+      points: 15
+
+  detection_opportunities:
+    - "Filebeat detecting repeated SSH failed attempts on db-01"
+    - "Kibana alert on authentication failures (T1110)"
+    - "Sysmon detecting lsass.exe access (credential dumping)"
+    - "Network traffic patterns: SMB, RDP to unexpected systems"
+    - "PowerShell command-line: encoded commands, lateral movement tools"
+
+# ============================================================================
+# HONEYPOT ENGAGEMENT
+# ============================================================================
+
+honeypot:
+  - name: "OpenCanary on canary-01"
+    description: "Listens on port 445 (fake SMB)"
+    expected_interaction: "Attacker may attempt to access fake shares"
+    
+  - name: "Cowrie on cowrie-01"
+    description: "SSH honeypot with fake shell"
+    expected_interaction: "SSH connection redirected to honeypot"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Initial Attack (Brute Force)"
+    duration: "10 minutes"
+    actions:
+      - red_team_executes_procedures_1
+      - blue_team_detects_brute_force
+      
+  phase_2:
+    name: "Lateral Movement"
+    duration: "20 minutes"
+    actions:
+      - red_team_executes_procedures_2_3
+      - blue_team_detects_lateral_movement
+      - blue_team_responds_isolate_systems
+      
+  phase_3:
+    name: "C2 & Full Compromise"
+    duration: "10 minutes"
+    actions:
+      - red_team_executes_procedure_4
+      - blue_team_attempts_containment
+      
+  phase_4:
+    name: "Post-Exercise Analysis"
+    duration: "5 minutes"
+    actions:
+      - both_teams_review_logs
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING MATRIX
+# ============================================================================
+
+scoring:
+  red_team:
+    objective_1_ssh_compromise: 15  # Points for successful SSH access
+    objective_2_smb_lateral_movement: 15
+    objective_3_credential_harvesting: 15
+    objective_4_c2_established: 15
+    bonus_honeypot_detected: 10  # Bonus if they interact with honeypot
+    total_possible: 70
+    
+  blue_team:
+    brute_force_detection: 20
+    lateral_movement_detection: 20
+    credential_access_detection: 15
+    incident_response_action: 15
+    zero_false_positives: 10
+    total_possible: 80
+
+# ============================================================================
+# EXERCISE CONCLUSION CRITERIA
+# ============================================================================
+
+go_no_go:
+  - "All procedures executed by red team"
+  - "Blue team detects at least 2 of 4 attack phases"
+  - "Time limit: 45 minutes"
+  - "Success: Blue team stops attack before full compromise (optional)"
+
+# ============================================================================
+# REFERENCES
+# ============================================================================
+
+references:
+  - title: "MITRE ATT&CK: Brute Force"
+    url: "https://attack.mitre.org/techniques/T1110/"
+  - title: "Detecting Lateral Movement in Windows"
+    url: "https://posts.specterops.io/"
+  - title: "D3FEND: Credential Access Defense"
+    url: "https://d3fend.mitre.org/"

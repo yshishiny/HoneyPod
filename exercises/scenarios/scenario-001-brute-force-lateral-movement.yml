@@ -1,0 +1,185 @@
+# Exercise Template: Credential Compromise & Lateral Movement
+# Scenario ID: EXEC-001-T1110-T1021
+# MITRE ATT&CK Techniques: T1110 (Brute Force), T1021 (Remote Services), T1078 (Valid Accounts)
+# MITRE D3FEND: DA-0001 (Adversary Behavior Analysis), DA-0005 (Process Analysis)
+
+scenario:
+  name: "Initial Compromise via Brute Force → Lateral Movement via RDP"
+  scenario_id: "EXEC-001-T1110-T1021"
+  difficulty: "MEDIUM"
+  duration_minutes: 45
+  teams:
+    - name: "Red Team"
+      objectives:
+        - "Initial compromise via credential brute force"
+        - "Establish persistence"
+        - "Move laterally to database server"
+        - "Exfiltrate sensitive data"
+    - name: "Blue Team"
+      objectives:
+        - "Detect brute force activity"
+        - "Identify lateral movement"
+        - "Respond and contain compromise"
+        - "Remediate and restore"
+
+attack_flow:
+  phase_1:
+    name: "Initial Access (T1110 - Brute Force)"
+    attacker_actions:
+      - technique: "T1110.001"
+        name: "Password Spray"
+        action: |
+          Launch password spray against DMZ jump host (DMZ-JUMPHOST-01)
+          Using common passwords: ['P@ssw0rd!', 'Welcome123!', 'Company2024!']
+          Target users: administrator, admin, service accounts
+        tool: "Caldera plugin: brute-force-ssh, brute-force-rdp"
+        target: "192.168.30.100 (DMZ-JUMPHOST-01)"
+        expected_success_rate: "medium (accounts not locked, policy allows attempts)"
+    blue_team_detection:
+      - alert_id: "t1110-brute-force"
+        siem_rule: "Excessive Failed Login Attempts"
+        log_source: "Windows Event ID 4625 (failed logons)"
+        expected_ttd_seconds: 120  # Time To Detect
+        detection_requirement: ">5 failed attempts within 5 minutes"
+    d3fend_active:
+      - technique: "DA-0001"
+        name: "Adversary Behavior Analysis"
+        description: "Correlate multiple failed logons to same account as brute force pattern"
+
+  phase_2:
+    name: "Persistence (T1547 - Boot or Logon Autostart Execution)"
+    attacker_actions:
+      - technique: "T1547.001"
+        name: "Registry Run Keys"
+        action: |
+          After successful RDP logon:
+          Create persistence via HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
+          Deploy beacon to C:\Windows\Temp\svc_monitor.exe
+        tool: "Caldera plugin: windows-persistence, Atomic Red Team: T1547"
+        target: "192.168.30.100 (DMZ-JUMPHOST-01)"
+    blue_team_detection:
+      - alert_id: "t1547-persistence"
+        siem_rule: "Suspicious Registry Modification - Run Key"
+        log_source: "Sysmon Event 12/13 (registry modification), Windows Event ID 4657"
+        expected_ttd_seconds: 60
+        detection_requirement: "Registry write to HKLM\\..\\Run by non-admin or system process"
+
+  phase_3:
+    name: "Lateral Movement (T1021.006 - RDP)"
+    attacker_actions:
+      - technique: "T1021.006"
+        name: "Remote Desktop Protocol"
+        action: |
+          From DMZ-JUMPHOST-01, enumerate reachable servers
+          Identify SRV-LINUX-DB-01 (192.168.20.50) via port scan
+          Attempt RDP against SRV-APP-01 (192.168.20.100) using compromised serviceaccount creds
+        tool: "Caldera plugin: network-enum, rdp-lateral"
+        target: "192.168.20.0/24 (Server Zone)"
+    blue_team_detection:
+      - alert_id: "t1021-006-lateral-rdp"
+        siem_rule: "Suspicious RDP Lateral Movement"
+        log_source: "Windows Event ID 4624 (logon type 10 = RDP), Sysmon Event 3 (network connection)"
+        expected_ttd_seconds: 180
+        detection_requirement: "RDP connection from unexpected source (DMZ to Server zone) with valid compromised account"
+
+  phase_4:
+    name: "Data Exfiltration (T1020 - Automated Exfiltration)"
+    attacker_actions:
+      - technique: "T1020"
+        name: "Automated Exfiltration"
+        action: |
+          From SRV-APP-01, query sensitive database
+          Dump data to CSV: customer_db.csv (8 MB)
+          Exfil via HTTPS POST to external C2: https://attacker.external.com/exfil
+        tool: "Caldera plugin: data-exfil-https"
+        target: "SRV-APP-01 → external network"
+    blue_team_detection:
+      - alert_id: "t1020-exfil"
+        siem_rule: "Unusual Data Transfer - Data Exfiltration Detected"
+        log_source: "Firewall logs, Zeek/Suricata NSM"
+        expected_ttd_seconds: 300
+        detection_requirement: "Large outbound HTTPS transfer from app server to unrecognized external IP"
+
+timeline:
+  t_0_min: "Caldera C2 control initiated, red team briefed"
+  t_2_min: "Brute force attack begins (password spray)"
+  t_5_min: "BLUE TEAM: First alerts trigger in SIEM"
+  t_10_min: "Red team gains initial access (valid account compromise)"
+  t_12_min: "Persistence mechanism deployed"
+  t_15_min: "Lateral movement enumeration begins"
+  t_20_min: "RDP connection to server zone (T1021.006)"
+  t_25_min: "Data exfiltration prepared"
+  t_30_min: "BLUE TEAM: Should have isolated DMZ-JUMPHOST-01"
+  t_35_min: "Data exfiltration executed (if not contained)"
+  t_45_min: "Exercise end, forensics and debrief"
+
+success_criteria_red_team:
+  complete: "All phases executed (full kill chain)"
+  partial: "Compromise + persistence achieved"
+  minimal: "Initial compromise only"
+
+success_criteria_blue_team:
+  detect_t1110: "Alert on brute force within 2 minutes of attack start"
+  detect_t1547: "Alert on registry persistence within 1 minute"
+  detect_t1021: "Alert on lateral movement RDP within 2 minutes"
+  detect_t1020: "Alert on data exfiltration within 5 minutes"
+  respond_time: "Isolate compromised system within 10 minutes of first alert"
+  containment_success: "Prevent data exfiltration"
+
+metrics:
+  detection_rate: "Percentage of ATT&CK techniques detected"
+  time_to_detect_avg: "Average time from TTP execution to alert (goal: <2 min)"
+  false_positive_count: "Legitimate activity flagged as suspicious"
+  response_time: "Average time from alert to mitigation action"
+  attack_success_rate: "Percentage of phases completed by red team"
+
+deception_engagement:
+  enabled: true
+  engagement_type: "MITRE Engage - Monitor + Deceive"
+  honeypot_interaction: "If red team probes deception zone (192.168.40.0/24):"
+  actions:
+    - "OpenCanary/Cowrie captures full interaction"
+    - "SIEM alert: 'Honeypot Engagement Detected'"
+    - "Full packet capture enabled"
+    - "Case created for TTP analysis"
+  tactical_value: "Reveals adversary tools, TTPs, C2 patterns, persistence mechanisms"
+
+pre_exercise_checklist:
+  - name: "Snapshot Production Range"
+    command: "terraform apply -target aws_ebs_snapshot_copy.production_range -auto-approve"
+  - name: "Verify SIEM Ingestion"
+    command: "ansible-playbook playbooks/verify-siem-ingest.yml"
+  - name: "Reset Caldera State"
+    command: "curl -X POST http://caldera-01.lab.honeypod.local:8888/api/v2/admin/reset"
+  - name: "Verify Network Segmentation"
+    command: "bash automation/test-segmentation.sh"
+  - name: "Brief Red/Blue/White Teams"
+    command: "Review this scenario document, objectives, success criteria"
+
+post_exercise:
+  forensics:
+    - capture_siem_logs: "Export SIEM logs for scenario window"
+    - analyze_tactic_coverage: "Which ATT&CK techniques were detected vs missed?"
+    - ttd_analysis: "Time-to-detect distribution"
+    - d3fend_effectiveness: "Which D3FEND countermeasures worked?"
+  
+  debrief_questions:
+    - "Which alerts were most valuable?"
+    - "What False Positives occurred?"
+    - "What detections were missed?"
+    - "How quickly did blue team respond?"
+    - "What remediation actions were effective?"
+    - "What should we improve for next exercise?"
+  
+  restoration:
+    - restore_snapshots: "Restore all production range VMs from pre-exercise snapshots"
+    - reset_deception: "Clear honeypot logs (optional: archive first)"
+    - reset_caldera: "Wipe Caldera state files"
+    - verify_reset: "Confirm full reset in <5 minutes"
+
+references:
+  - "MITRE ATT&CK: https://attack.mitre.org/techniques/T1110/, T1547/, T1021.006/"
+  - "MITRE D3FEND: https://d3fend.mitre.org"
+  - "Atomic Red Team: https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1110.001/T1110.001.md"
+  - "Caldera: https://caldera.mitre.org"
+  - "NIST SP 800-115: Technical Security Testing and Assessment"

@@ -1,0 +1,26 @@
+---
+# ============================================================================
+# Group Variables: Windows Systems (DC + Endpoints)
+# ============================================================================
+
+ansible_connection: winrm
+ansible_port: 5985
+ansible_winrm_transport: basic
+ansible_winrm_read_timeout_sec: 60
+
+# Windows updates
+windows_update_enabled: true
+windows_automatic_updates: true
+
+# Firewall
+firewall_enabled: true
+firewall_profile: Domain
+
+# Logging
+enable_audit_logging: true
+enable_sysmon: true
+sysmon_config_url: "https://raw.githubusercontent.com/SwiftOnSecurity/sysmon-config/master/sysmonconfig-export.xml"
+
+# WinRM configuration
+winrm_enabled: true
+winrm_port: 5985

@@ -1,0 +1,45 @@
+---
+# ============================================================================
+# Group Variables: All Systems
+# ============================================================================
+
+# Lab configuration
+lab_domain: corp.local
+lab_timezone: UTC
+
+# Active Directory
+domain_admin_user: honeyadmin
+domain_dn: "DC=corp,DC=local"
+
+# Honeypod admin credentials
+local_admin_user: honeyadmin
+local_admin_password: "HoneyPod@LocalAdmin2024!"
+honeyadmin_password: "HoneyPod@Honeyadmin2024!"
+
+# Windows credentials (vars must be overridden at runtime)
+domain_admin_password: "!ChangeMe@Default2024"
+
+# SIEM Configuration
+siem_elasticsearch_host: 192.168.50.10
+siem_elasticsearch_port: 9200
+siem_kibana_port: 5601
+siem_agent_user: elastic
+siem_agent_password: "!ChangeMe@Elastic2024"
+
+# Caldera Configuration
+caldera_host: 192.168.60.10
+caldera_port: 8888
+caldera_admin_user: admin
+caldera_admin_password: "!ChangeMe@Caldera2024"
+
+# Honeypot Configuration
+honeypot_ssh_port: 2222
+honeypot_telnet_port: 2323
+honeypot_ftp_port: 21
+honeypot_http_port: 80
+honeypot_https_port: 443
+honeypot_smb_port: 445
+
+# Ansible connection settings
+ansible_connection_timeout: 30
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

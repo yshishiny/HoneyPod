@@ -1,0 +1,99 @@
+---
+# ============================================================================
+# Active Directory Domain Controller Setup - Complete
+# ============================================================================
+
+- name: Install AD feature
+  win_feature:
+    name:
+      - AD-Domain-Services
+      - RSAT-AD-AdminCenter
+      - DNS
+    state: present
+  register: ad_install
+
+- name: Install forest and root domain
+  win_domain:
+    dns_domain_name: "{{ lab_domain | default('corp.local') }}"
+    safe_mode_admin_password: "{{ domain_admin_password | default('HoneyPod@2024!') }}"
+    forest_mode: "2016"
+    domain_mode: "2016"
+  register: domain_result
+
+- name: Reboot after AD forest creation
+  win_reboot:
+    msg: "Rebooting to complete AD installation"
+    reboot_timeout: 600
+  when: domain_result.changed
+
+- name: Wait for AD to stabilize
+  win_wait_for_serial:
+    timeout: 300
+  when: domain_result.changed
+
+- name: Create security groups for lab users
+  win_domain_group:
+    name: "{{ item }}"
+    scope: global
+    category: security
+    state: present
+  loop:
+    - "Threat Analysts"
+    - "SOC Analysts"
+    - "Network Admins"
+    - "Lab Users"
+    - "Sensitive Data"
+    - "Financial Systems"
+  ignore_errors: yes
+
+- name: Create lab users with varying permissions
+  win_domain_user:
+    name: "{{ item.username }}"
+    password: "{{ item.password }}"
+    upn: "{{ item.username }}@{{ lab_domain }}"
+    groups:
+      - "{{ item.group }}"
+    state: present
+    password_never_expires: yes
+  loop:
+    - { username: "analyst_01", password: "HoneyPod@Analyst1!", group: "Threat Analysts" }
+    - { username: "soc_engineer", password: "HoneyPod@SOC123!", group: "SOC Analysts" }
+    - { username: "regular_user", password: "HoneyPod@User2024!", group: "Lab Users" }
+    - { username: "finance_user", password: "HoneyPod@Finance!", group: "Financial Systems" }
+  ignore_errors: yes
+
+- name: Enable RDP for remote management
+  win_firewall_rule:
+    name: "Remote Desktop - User Mode"
+    direction: in
+    action: allow
+    enabled: yes
+    profiles: 'Domain'
+    state: present
+
+- name: Set static IP for DC
+  win_shell: |
+    $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+    if ($adapter) {
+      New-NetIPAddress -InterfaceAlias $adapter.Name -IPAddress "192.168.20.10" -PrefixLength 24 -DefaultGateway "192.168.20.1" -ErrorAction SilentlyContinue
+      Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses ("127.0.0.1", "8.8.8.8") -ErrorAction SilentlyContinue
+    }
+  ignore_errors: yes
+
+- name: Configure DNS
+  win_dns_zone:
+    name: "{{ lab_domain }}"
+    state: present
+  ignore_errors: yes
+
+- name: Configure audit policy
+  win_shell: |
+    auditpol /set /subcategory:"Logon" /success:enable /failure:enable
+    auditpol /set /subcategory:"Account Management" /success:enable /failure:enable
+    auditpol /set /subcategory:"Account Lockout" /success:enable /failure:enable
+  ignore_errors: yes
+
+- name: Register deployment fact
+  set_fact:
+    ad_deployed: true
+    cacheable: yes

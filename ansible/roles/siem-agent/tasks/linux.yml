@@ -1,0 +1,69 @@
+---
+# ============================================================================
+# SIEM Agent - Linux Tasks
+# ============================================================================
+
+- name: Add Elastic GPG key
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Add Elastic repository
+  apt_repository:
+    repo: deb https://artifacts.elastic.co/packages/8.x/apt stable main
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install Filebeat
+  apt:
+    name: filebeat
+    state: present
+    update_cache: yes
+
+- name: Configure Filebeat
+  template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+    mode: '0600'
+  notify: restart filebeat
+
+- name: Install Auditbeat
+  apt:
+    name: auditbeat
+    state: present
+
+- name: Configure Auditbeat
+  template:
+    src: auditbeat.yml.j2
+    dest: /etc/auditbeat/auditbeat.yml
+    mode: '0600'
+  notify: restart auditbeat
+
+- name: Configure rsyslog for centralized logging
+  template:
+    src: rsyslog-forward.conf.j2
+    dest: /etc/rsyslog.d/99-honeypod-forward.conf
+    mode: '0644'
+  notify: restart rsyslog
+
+- name: Enable and start Filebeat
+  systemd:
+    name: filebeat
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Enable and start Auditbeat
+  systemd:
+    name: auditbeat
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Enable and start rsyslog
+  systemd:
+    name: rsyslog
+    state: started
+    enabled: yes
+    daemon_reload: yes

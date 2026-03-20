@@ -1,0 +1,49 @@
+---
+# ============================================================================
+# OpenCanary Installation and Configuration
+# ============================================================================
+
+- name: Install OpenCanary via pip
+  pip:
+    name: opencanary
+    state: present
+
+- name: Create OpenCanary config directory
+  file:
+    path: /etc/opencanary
+    state: directory
+    mode: '0755'
+
+- name: Deploy OpenCanary configuration
+  copy:
+    src: opencanary.conf
+    dest: /etc/opencanary/opencanary.conf
+    mode: '0644'
+  notify: restart opencanary
+
+- name: Create OpenCanary systemd service
+  copy:
+    content: |
+      [Unit]
+      Description=OpenCanary Honeypot
+      After=network.target
+      
+      [Service]
+      Type=simple
+      User=root
+      ExecStart=/usr/local/bin/opencanary --config /etc/opencanary/opencanary.conf
+      Restart=on-failure
+      RestartSec=10
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/opencanary.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start OpenCanary
+  systemd:
+    name: opencanary
+    state: started
+    enabled: yes
+    daemon_reload: yes

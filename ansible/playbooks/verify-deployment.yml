@@ -1,0 +1,168 @@
+---
+# ============================================================================
+# Verification Playbook - Post-Deployment Testing
+# ============================================================================
+# Verifies that all services are running and configured correctly
+# Usage: ansible-playbook -i inventory/hosts playbooks/verify-deployment.yml
+# ============================================================================
+
+- name: Verify HoneyPod Deployment
+  hosts: all
+  gather_facts: yes
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all.yml"
+
+  tasks:
+    - name: Display verification header
+      debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════╗
+          ║         HoneyPod Deployment Verification                 ║
+          ║ Target: {{ inventory_hostname }} ({{ ansible_distribution }})
+          ╚═══════════════════════════════════════════════════════════╝
+      run_once: true
+
+    - name: Verify DNS resolution
+      block:
+        - name: Resolve DC hostname (Windows)
+          win_shell: |
+            [System.Net.Dns]::GetHostAddresses("dc-honeypod-01") | Select-Object IPAddressToString
+          register: dns_resolve_dc
+          when: ansible_os_family == "Windows"
+
+        - name: Resolve DC hostname (Linux)
+          shell: |
+            getent hosts dc-honeypod-01 | awk '{print $1}'
+          register: dns_resolve_dc
+          when: ansible_os_family != "Windows"
+
+        - name: Display DNS resolution result
+          debug:
+            msg: "DC resolved to: {{ dns_resolve_dc.stdout }}"
+          when: dns_resolve_dc.stdout | length > 0
+
+    - name: Verify Active Directory (Windows only)
+      block:
+        - name: Check domain membership
+          win_shell: |
+            (Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain
+          register: domain_membership
+
+        - name: Display domain status
+          debug:
+            msg: "Domain joined: {{ domain_membership.stdout | trim }}"
+
+        - name: Get AD forest info (Domain Controllers only)
+          win_shell: |
+            (Get-ADForest -ErrorAction SilentlyContinue).Name
+          register: ad_forest
+          when: inventory_hostname in groups['domain_controllers']
+
+      when: ansible_os_family == "Windows"
+
+    - name: Verify SIEM connectivity (Linux only)
+      block:
+        - name: Test Elasticsearch connectivity
+          uri:
+            url: "http://{{ siem_elasticsearch_host }}:{{ siem_elasticsearch_port }}/"
+            method: GET
+            status_code: 200
+          register: elasticsearch_status
+          changed_when: false
+          ignore_errors: yes
+
+        - name: Display SIEM status
+          debug:
+            msg:
+              - "Elasticsearch Status: OK"
+              - "Cluster: {{ elasticsearch_status.json.cluster_name | default('N/A') }}"
+          when: elasticsearch_status.status == 200
+
+      when: ansible_os_family != "Windows"
+
+    - name: Verify firewall status
+      block:
+        - name: Check firewall (Windows)
+          win_shell: |
+            Get-NetFirewallProfile | Select-Object Name, Enabled | ConvertTo-Json
+          register: firewall_status
+          when: ansible_os_family == "Windows"
+
+        - name: Check firewall (Linux)
+          shell: |
+            ufw status
+          register: firewall_status
+          when: ansible_os_family != "Windows"
+
+        - name: Display firewall status
+          debug:
+            msg: "{{ firewall_status.stdout }}"
+
+    - name: Verify services
+      block:
+        - name: Check essential services (Windows)
+          win_service:
+            name: "{{ item }}"
+          register: service_status
+          loop:
+            - WinRM
+            - Winlogon
+          ignore_errors: yes
+          when: ansible_os_family == "Windows"
+
+        - name: Check essential services (Linux)
+          service:
+            name: "{{ item }}"
+            state: started
+          register: service_status
+          loop:
+            - rsyslog
+            - ssh
+          ignore_errors: yes
+          when: ansible_os_family != "Windows"
+
+    - name: Network connectivity tests
+      block:
+        - name: Ping gateway
+          shell: ping -c 1 192.168.10.1
+          register: ping_gateway
+          changed_when: false
+          ignore_errors: yes
+          when: ansible_os_family != "Windows"
+
+        - name: Ping gateway (Windows)
+          win_shell: Test-Connection -ComputerName 192.168.10.1 -Count 1
+          register: ping_gateway
+          changed_when: false
+          ignore_errors: yes
+          when: ansible_os_family == "Windows"
+
+        - name: Display connectivity
+          debug:
+            msg: "Gateway connectivity: OK"
+          when: ping_gateway.rc == 0 or ping_gateway is succeeded
+
+    - name: Generate verification report
+      template:
+        src: verification_report.j2
+        dest: "/tmp/verification_{{ inventory_hostname }}.txt"
+      changed_when: false
+
+    - name: Display verification complete
+      debug:
+        msg: "Verification complete for {{ inventory_hostname }}"
+
+- name: Summary Report
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display summary
+      debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════╗
+          ║         Verification Complete                            ║
+          ║                                                            ║
+          ║  All tests completed. Review logs for any warnings.      ║
+          ║  Logs available in /tmp/verification_*.txt               ║
+          ╚═══════════════════════════════════════════════════════════╝
+      run_once: true

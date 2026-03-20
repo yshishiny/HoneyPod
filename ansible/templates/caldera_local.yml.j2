@@ -1,0 +1,33 @@
+logging:
+  level: INFO
+  
+web:
+  host: 0.0.0.0
+  port: {{ caldera_port }}
+
+api:
+  host: 0.0.0.0
+  port: {{ caldera_port }}
+
+reports:
+  enabled: true
+  log_dir: /opt/caldera/logs
+
+agents:
+  implant_name: sandcat
+
+plugins:
+  - name: rest-api
+  - name: access
+  - name: atomic
+  - name: debrief
+  - name: emu
+  - name: gameboard
+  - name: manx
+  - name: response
+  - name: sandcat
+
+auth:
+  enabled: true
+  users:
+    - {{ caldera_admin_user }}

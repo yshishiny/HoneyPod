@@ -1,0 +1,99 @@
+---
+# ============================================================================
+# Linux Base Configuration - All Linux systems
+# ============================================================================
+
+- name: Update package manager
+  block:
+    - name: Update APT cache (Ubuntu/Debian)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update YUM cache (RHEL/CentOS)
+      yum:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+- name: Install base packages
+  package:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - net-tools
+      - psmisc
+      - telnet
+      - sudo
+      - ssh
+      - openssh-server
+      - openssh-client
+    state: present
+
+- name: Configure SSH hardening
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin prohibit-password' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication yes' }
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding yes' }
+    - { regexp: '^#?PrintMotd', line: 'PrintMotd no' }
+  notify: Restart SSH
+
+- name: Create honeyadmin user
+  user:
+    name: honeyadmin
+    password: "{{ honeyadmin_password | password_hash('sha512') }}"
+    groups: sudo
+    shell: /bin/bash
+    state: present
+    createhome: yes
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Configure timezone
+  timezone:
+    name: "{{ lab_timezone | default('UTC') }}"
+
+- name: Configure resolv.conf with DC DNS
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    mode: '0644'
+
+- name: Enable IP forwarding for network simulation
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+
+- name: Create honey pod directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/honeypod
+    - /opt/honeypod/logs
+    - /opt/honeypod/tools
+    - /opt/honeypod/data
+
+- name: Register Linux base config fact
+  set_fact:
+    linux_base_configured: true
+    cacheable: yes
+
+handlers:
+  - name: Restart SSH
+    service:
+      name: sshd
+      state: restarted

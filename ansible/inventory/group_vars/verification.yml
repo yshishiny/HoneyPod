@@ -1,0 +1,15 @@
+---
+# ============================================================================
+# Group Variables: Verification and Testing
+# ============================================================================
+
+# Connectivity tests
+test_ping_all: true
+test_dns_resolution: true
+test_ad_connectivity: true
+test_siem_connectivity: true
+
+# Fact gathering
+gather_system_info: true
+gather_network_info: true
+gather_service_status: true

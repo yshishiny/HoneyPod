@@ -1,0 +1,89 @@
+{
+  "settings": {
+    "port": {{ honeypot_opencanary_http_port }},
+    "listen_addr": "0.0.0.0",
+    "stout": true,
+    "logfile": "/var/log/opencanary/opencanary.log",
+    "logger": {
+      "class": "logging.handlers.SysLogHandler",
+      "address": ["{{ siem_elasticsearch_host }}", 514],
+      "facility": "LOG_USER",
+      "formatter": "json"
+    }
+  },
+  "devices": {
+    "ftp": {
+      "enabled": true,
+      "port": 21,
+      "banner": "FTP Server Ready"
+    },
+    "ssh": {
+      "enabled": true,
+      "port": 2222,
+      "banner": "OpenSSH_7.4"
+    },
+    "http": {
+      "enabled": true,
+      "port": 80,
+      "banner": "Apache/2.4.29"
+    },
+    "https": {
+      "enabled": true,
+      "port": 443,
+      "banner": "nginx/1.14.0"
+    },
+    "samba": {
+      "enabled": true,
+      "port": 445,
+      "banner": "Samba 4.7.6"
+    },
+    "telnet": {
+      "enabled": true,
+      "port": 23,
+      "banner": "telnetd"
+    },
+    "snmp": {
+      "enabled": false,
+      "port": 161
+    },
+    "ntp": {
+      "enabled": false,
+      "port": 123
+    },
+    "rdp": {
+      "enabled": false,
+      "port": 3389
+    },
+    "vnc": {
+      "enabled": false,
+      "port": 5900
+    },
+    "ldap": {
+      "enabled": false,
+      "port": 389
+    },
+    "ldaps": {
+      "enabled": false,
+      "port": 636
+    }
+  },
+  "canaries": {
+    "http.calls": true,
+    "ftp.calls": true,
+    "ssh.calls": true,
+    "telnet.calls": true,
+    "samba.calls": true
+  },
+  "alerter": {
+    "email": {
+      "enabled": false,
+      "smtp_server": "smtp.{{ lab_domain }}",
+      "from_addr": "honeypot@{{ lab_domain }}"
+    },
+    "syslog": {
+      "enabled": true,
+      "address": "{{ siem_elasticsearch_host }}",
+      "port": 514
+    }
+  }
+}

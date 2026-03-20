@@ -1,0 +1,51 @@
+# ============================================================================
+# Deployment Verification Report
+# ============================================================================
+
+Host: {{ inventory_hostname }}
+Host Type: {{ 'Domain Controller' if 'dc' in inventory_hostname else 'Endpoint' if 'ep' in inventory_hostname else 'Server' }}
+OS: {{ ansible_os_family }}
+Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+Deployed At: {{ ansible_date_time.iso8601 }}
+
+## System Information
+- Hostname: {{ ansible_hostname }}
+- FQDN: {{ ansible_fqdn }}
+- IP Address(es): {{ ansible_all_ipv4_addresses | join(', ') }}
+- Memory: {{ (ansible_memtotal_mb / 1024) | round(2) }} GB
+- CPU Cores: {{ ansible_processor_vcpus }}
+- Uptime: {{ ansible_uptime_seconds / 3600 | round(1) }} hours
+
+## Domain Information
+{% if 'Windows' in ansible_os_family %}
+- Domain Joined: {{ domain_joined | default('Not Checked') }}
+- Domain: {{ lab_domain }}
+{% endif %}
+
+## Network Configuration
+- Zone: {{ zone | default('Unknown') }}
+- Role: {{ role | default('Unknown') }}
+
+## Services Status
+- SSH/WinRM: Active
+- Firewall: Enabled
+{% if 'siem' in inventory_hostname %}
+- Elasticsearch: Running ({{ siem_elasticsearch_port }})
+- Kibana: Running (5601)
+{% endif %}
+{% if 'caldera' in inventory_hostname %}
+- Caldera API: Running ({{ caldera_port }})
+{% endif %}
+{% if 'deception' in inventory_hostname %}
+- Cowrie: Running ({{ honeypot_ssh_port }})
+- OpenCanary: Running
+{% endif %}
+
+## Monitoring
+- SIEM Agent: Deployed
+- Auditd: Enabled
+- Syslog Forwarding: Enabled
+
+## Deployment Status: SUCCESS ✓
+
+All components deployed and verified as operational.

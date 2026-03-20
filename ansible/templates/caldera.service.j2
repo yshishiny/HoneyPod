@@ -1,0 +1,15 @@
+[Unit]
+Description=MITRE Caldera Cyber Adversary Emulation Framework
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/caldera
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/caldera/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# HoneyPod Exercise Scenario 005: Persistence via Registry & Scheduled Tasks
+# Simulates T1547 (Boot or Logon Autostart Execution)
+# ============================================================================
+
+name: "Scenario 005: Persistence Mechanisms & Scheduled Tasks"
+version: "1.0"
+date_created: "2026-03-18"
+difficulty: "Medium"
+duration_minutes: 40
+lab_version_required: "1.0"
+
+# ============================================================================
+# EXERCISE OBJECTIVES
+# ============================================================================
+
+objectives:
+  - "Establish registry run key persistence"
+  - "Create scheduled task for persistence"
+  - "Implement WMI event-driven persistence"
+  - "Verify persistence across system reboot"
+  - "Detect and remove persistence mechanisms"
+
+# ============================================================================
+# MITRE ATT&CK COVERAGE
+# ============================================================================
+
+mitre_att_ck:
+  - technique: "T1547.001"
+    name: "Boot or Logon Autostart Execution - Registry Run Keys"
+    severity: "high"
+  - technique: "T1053.005"
+    name: "Scheduled Task/Job - Scheduled Task"
+    severity: "high"
+  - technique: "T1546.003"
+    name: "Event Triggered Execution - WMI Events"
+    severity: "medium"
+  - technique: "T1547.014"
+    name: "Boot or Logon Autostart Execution - Active Setup"
+    severity: "medium"
+
+d3fend_countermeasures:
+  - "CM-0013: Registry Monitoring"
+  - "CM-0014: Scheduled Task Auditing"
+  - "CM-0015: WMI Activity Logging"
+  - "CM-0016: Persistence Detection Rules"
+
+# ============================================================================
+# RED TEAM PROCEDURES
+# ============================================================================
+
+red_team:
+  attack_platform: "Caldera"
+  target_group: "windows_endpoints"
+  
+  procedures:
+    1:
+      name: "Registry Run Key Persistence"
+      technique: "T1547.001"
+      steps:
+        - "Add malware to HKLM\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run"
+        - "Point to malware executable"
+        - "Verify execution on next logon"
+      expected_outcome: "Persistence via registry key"
+      
+    2:
+      name: "Scheduled Task Persistence"
+      technique: "T1053.005"
+      steps:
+        - "Create scheduled task via schtasks"
+        - "Schedule execution every 5 minutes"
+        - "Run task on user logon"
+      expected_outcome: "Malware executes every 5 minutes"
+      
+    3:
+      name: "WMI Event Subscription"
+      technique: "T1546.003"
+      steps:
+        - "Create WMI event filter for process creation"
+        - "Create consumer for payload execution"
+        - "Bind filter to consumer"
+      expected_outcome: "Malware executes on trigger event"
+      
+    4:
+      name: "Verify Persistence"
+      technique: "T1547"
+      steps:
+        - "Trigger system reboot"
+        - "Verify malware execution post-reboot"
+        - "Check all persistence mechanisms active"
+      expected_outcome: "Persistence confirmed across reboot"
+
+# ============================================================================
+# BLUE TEAM DETECTION REQUIREMENTS
+# ============================================================================
+
+blue_team:
+  success_criteria:
+    - name: "Registry Persistence Detection"
+      description: "Detect registry run key modifications"
+      target: "≥90% detection"
+      points: 20
+      
+    - name: "Scheduled Task Detection"
+      description: "Detect suspicious scheduled tasks"
+      target: "≥85% detection"
+      points: 20
+      
+    - name: "WMI Event Detection"
+      description: "Detect WMI event subscriptions"
+      target: "≥75% detection"
+      points: 15
+      
+    - name: "Persistence Removal"
+      description: "Successfully remove all persistence mechanisms"
+      target: "100% cleanup"
+      points: 15
+
+  detection_opportunities:
+    - "Sysmon Event ID 12-13: Registry modifications"
+    - "Sysmon Event ID 11: Executable file writes"
+    - "Windows Event Log: Task Scheduler events"
+    - "WMI Provider: Event subscription creation"
+    - "System process ancestry: Unexpected child processes"
+
+# ============================================================================
+# EXERCISE FLOW
+# ============================================================================
+
+flow:
+  phase_1:
+    name: "Persistence Implantation"
+    duration: "15 minutes"
+    actions:
+      - red_team_executes_procedures_1_2_3
+      - blue_team_detects_persistence_attempts
+      
+  phase_2:
+    name: "Blue Team Response"
+    duration: "15 minutes"
+    actions:
+      - blue_team_removes_persistence
+      - blue_team_re-enables_detections
+      
+  phase_3:
+    name: "Verification & Analysis"
+    duration: "10 minutes"
+    actions:
+      - all_teams_verify_cleanup
+      - whiteh_team_scores_exercise
+
+# ============================================================================
+# SCORING
+# ============================================================================
+
+scoring:
+  red_team:
+    registry_persistence: 10
+    scheduled_task_persistence: 15
+    wmi_persistence: 10
+    persistence_verified: 25
+    total_possible: 60
+    
+  blue_team:
+    registry_detection: 20
+    task_detection: 20
+    wmi_detection: 15
+    successful_cleanup: 15
+    incident_response: 10
+    total_possible: 80

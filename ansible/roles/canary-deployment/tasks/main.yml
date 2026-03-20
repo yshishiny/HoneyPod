@@ -1,0 +1,26 @@
+---
+# ============================================================================
+# Canary Deployment Role - Main tasks
+# Deploys OpenCanary and Cowrie honeypots
+# ============================================================================
+
+- name: Install dependencies
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - git
+      - curl
+      - wget
+      - net-tools
+      - supervisor
+    state: present
+    update_cache: yes
+
+- name: Deploy OpenCanary
+  include_tasks: opencanary.yml
+  when: inventory_hostname in groups['deception_servers'] and 'canary' in inventory_hostname
+
+- name: Deploy Cowrie
+  include_tasks: cowrie.yml
+  when: inventory_hostname in groups['deception_servers'] and 'cowrie' in inventory_hostname

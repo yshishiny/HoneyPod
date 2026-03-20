@@ -1,0 +1,71 @@
+---
+# ============================================================================
+# Windows Hardening Tasks
+# ============================================================================
+
+- name: Enable Windows Defender
+  win_shell: |
+    Set-MpPreference -DisableRealtimeMonitoring $false
+    Get-MpPreference | Select-Object DisableRealtimeMonitoring
+  register: defender_status
+  changed_when: false
+
+- name: Enable Windows Firewall
+  win_shell: |
+    Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+    Get-NetFirewallProfile | Select-Object Name, Enabled
+  register: firewall_status
+  changed_when: false
+
+- name: Enable Windows Update
+  win_service:
+    name: wuauserv
+    state: started
+    start_mode: auto
+
+- name: Install Windows Updates
+  win_updates:
+    category_names: 
+      - SecurityUpdates
+      - CriticalUpdates
+      - Updates
+    state: installed
+  register: updates_result
+  until: updates_result is succeeded
+  retries: 3
+
+- name: Enable Audit Policy - Process Creation
+  win_shell: |
+    auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
+  changed_when: false
+
+- name: Enable Audit Policy - Logon/Logoff
+  win_shell: |
+    auditpol /set /subcategory:"Logon" /success:enable /failure:enable
+    auditpol /set /subcategory:"Logoff" /success:enable /failure:enable
+  changed_when: false
+
+- name: Install Sysmon
+  block:
+    - name: Download Sysmon
+      win_get_url:
+        url: https://download.sysinternals.com/files/Sysmon.zip
+        dest: C:\Temp\Sysmon.zip
+
+    - name: Extract Sysmon
+      win_unzip:
+        src: C:\Temp\Sysmon.zip
+        dest: C:\Temp\Sysmon
+        delete_archive: no
+
+    - name: Install Sysmon service
+      win_shell: |
+        C:\Temp\Sysmon\Sysmon64.exe -accepteula -i -n
+      ignore_errors: yes
+
+    - name: Start Sysmon service
+      win_service:
+        name: Sysmon64
+        state: started
+        start_mode: auto
+  when: enable_sysmon | default(true)

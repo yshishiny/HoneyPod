@@ -1,0 +1,38 @@
+---
+# ============================================================================
+# SIEM Agent - Windows Tasks
+# ============================================================================
+
+- name: Download Winlogbeat
+  win_get_url:
+    url: https://artifacts.elastic.co/downloads/beats/winlogbeat/winlogbeat-8.9.0-windows-x86_64.zip
+    dest: C:\Temp\winlogbeat.zip
+
+- name: Extract Winlogbeat
+  win_unzip:
+    src: C:\Temp\winlogbeat.zip
+    dest: C:\Program Files
+    delete_archive: no
+
+- name: Rename Winlogbeat directory
+  win_shell: |
+    if(Test-Path 'C:\Program Files\winlogbeat-8.9.0-windows-x86_64'){
+      Rename-Item -Path 'C:\Program Files\winlogbeat-8.9.0-windows-x86_64' -NewName 'Winlogbeat'
+    }
+
+- name: Configure Winlogbeat
+  template:
+    src: winlogbeat.yml.j2
+    dest: C:\Program Files\Winlogbeat\winlogbeat.yml
+  notify: restart winlogbeat
+
+- name: Install Winlogbeat service
+  win_shell: |
+    cd 'C:\Program Files\Winlogbeat'
+    .\install-service-winlogbeat.ps1
+
+- name: Start Winlogbeat service
+  win_service:
+    name: winlogbeat
+    state: started
+    start_mode: auto

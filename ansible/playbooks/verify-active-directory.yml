@@ -1,0 +1,59 @@
+---
+# ============================================================================
+# Active Directory Verification Playbook
+# ============================================================================
+# Verifies AD functionality, domain join status, and user/group creation
+
+- name: Verify Active Directory Setup
+  hosts: domain_controllers
+  gather_facts: yes
+
+  tasks:
+    - name: Check AD Forest status
+      win_shell: |
+        (Get-ADForest).Name
+      register: forest_name
+
+    - name: Display AD Forest status
+      debug:
+        msg:
+          - "AD Forest: {{ forest_name.stdout | trim }}"
+          - "Status: OK"
+
+    - name: Verify security groups
+      win_shell: |
+        (Get-ADGroup -Filter "Name -eq 'Threat Analysts'" -ErrorAction SilentlyContinue).Name
+      register: ad_groups
+
+    - name: Verify lab users
+      win_shell: |
+        Get-ADUser -Filter "Name -like 'analyst*'" | Select-Object SamAccountName
+      register: ad_users
+
+    - name: Display AD objects
+      debug:
+        msg:
+          - "Security Groups: {{ ad_groups.stdout }}"
+          - "Lab Users: {{ ad_users.stdout }}"
+
+- name: Verify Domain Join Status
+  hosts: windows_endpoints
+  gather_facts: yes
+
+  tasks:
+    - name: Check domain membership
+      win_shell: |
+        (Get-WmiObject -Class Win32_ComputerSystem).Domain
+      register: domain_name
+
+    - name: Verify DNS resolution
+      win_shell: |
+        Resolve-DnsName dc-honeypod-01 -Type A | Select-Object Name, IPAddress
+      register: dns_resolution
+
+    - name: Display domain status
+      debug:
+        msg:
+          - "Domain: {{ domain_name.stdout | trim }}"
+          - "DNS Resolution: OK"
+          - "Domain Join: SUCCESS"

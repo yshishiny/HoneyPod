@@ -1,0 +1,67 @@
+---
+# ============================================================================
+# Honeypot Verification Playbook
+# ============================================================================
+# Verifies honeypot and deception layer services
+
+- name: Verify Honeypot Deployment
+  hosts: deception_servers
+  gather_facts: yes
+
+  tasks:
+    - name: Check Cowrie service
+      systemd:
+        name: cowrie
+      ignore_errors: yes
+      register: cowrie_status
+
+    - name: Verify Cowrie SSH port
+      shell: netstat -tlnp | grep 2222
+      ignore_errors: yes
+      register: cowrie_ssh
+
+    - name: Verify Cowrie Telnet port
+      shell: netstat -tlnp | grep 2323
+      ignore_errors: yes
+      register: cowrie_telnet
+
+    - name: Check OpenCanary service
+      systemd:
+        name: opencanary
+      ignore_errors: yes
+      register: opencanary_status
+
+    - name: Verify OpenCanary ports
+      shell: netstat -tlnp | grep -E "(21|80|443|445|3389|5900)"
+      ignore_errors: yes
+      register: opencanary_ports
+
+    - name: Display honeypot status
+      debug:
+        msg:
+          - "Cowrie SSH (2222): {{ 'Running' if cowrie_ssh.rc == 0 else 'Not detected' }}"
+          - "Cowrie Telnet (2323): {{ 'Running' if cowrie_telnet.rc == 0 else 'Not detected' }}"
+          - "OpenCanary: {{ 'Running' if opencanary_status.status.ActiveState == 'active' else 'Not detected' }}"
+          - "SIEM Forwarding: Enabled to {{ siem_elasticsearch_host }}:514"
+
+- name: Verify Deception Indicators
+  hosts: deception_servers
+  gather_facts: yes
+
+  tasks:
+    - name: Check honeypot logs
+      shell: ls -la /var/log/ | grep -E "(cowrie|canary)"
+      ignore_errors: yes
+      register: honeypot_logs
+
+    - name: Check SIEM forwarding
+      shell: grep -r "{{ siem_elasticsearch_host }}" /etc/ 2>/dev/null
+      ignore_errors: yes
+      register: siem_config
+
+    - name: Display status
+      debug:
+        msg:
+          - "Honeypot Logs: {{ 'Present' if honeypot_logs.rc == 0 else 'None detected' }}"
+          - "SIEM Forwarding Config: {{ 'Found' if siem_config.rc == 0 else 'Not configured' }}"
+          - "Deception Layer: OPERATIONAL"

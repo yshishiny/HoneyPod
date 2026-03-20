@@ -1,0 +1,32 @@
+---
+# ============================================================================
+# Group Variables: Honeypots and Deception Layer
+# ============================================================================
+
+# Cowrie SSH/Telnet honeypot
+honeypot_cowrie_enabled: true
+honeypot_cowrie_ssh_port: 2222
+honeypot_cowrie_telnet_port: 2323
+honeypot_cowrie_datasource: sqlite
+honeypot_cowrie_fake_system_type: "debian"
+
+# OpenCanary honeypot
+honeypot_opencanary_enabled: true
+honeypot_opencanary_ftp_enabled: true
+honeypot_opencanary_http_enabled: true
+honeypot_opencanary_https_enabled: true
+honeypot_opencanary_smb_enabled: true
+
+# Canary token configuration
+canary_token_enabled: true
+canary_token_file_enabled: true
+canary_token_database_enabled: true
+
+# Log forwarding (to SIEM)
+honeypot_log_forwarding_enabled: true
+honeypot_log_forwarding_host: "{{ siem_elasticsearch_host }}"
+honeypot_log_forwarding_port: 514
+
+# Honeypot tracking
+honeypot_tracking_enabled: true
+tracking_database_uri: "sqlite:////opt/honeypod/honeypot_tracking.db"
