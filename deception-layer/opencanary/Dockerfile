@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenCanary
-RUN pip3 install --break-system-packages opencanary scapy pcapy-ng
+RUN pip3 install opencanary scapy pcapy-ng
 
 # Create necessary directories
 RUN mkdir -p /etc/opencanaryd /var/log/opencanary /mnt/canary/backups /mnt/canary/admin
