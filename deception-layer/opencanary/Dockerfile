@@ -19,23 +19,22 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenCanary
-RUN pip3 install opencanary scapy pcapy-ng
+RUN pip3 install --break-system-packages opencanary scapy pcapy-ng
 
 # Create necessary directories
-RUN mkdir -p /etc/opencanary /var/log/canary /mnt/canary/backups /mnt/canary/admin
+RUN mkdir -p /etc/opencanaryd /var/log/opencanary /mnt/canary/backups /mnt/canary/admin
 
-# Copy configuration files
-COPY opencanary.conf /etc/opencanary/opencanary.conf
-COPY opencanary-config.conf /etc/opencanary/opencanary-config.conf
+# Copy the JSON configuration file to the correct path
+COPY opencanary.json /etc/opencanaryd/opencanary.conf
 
-# Create dummy certificates and files for HTTP/SMB
+# Create dummy certificates for HTTPS honeypot
 RUN openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
     -subj "/C=US/ST=State/L=City/O=HoneyPod/CN=honeypod.local" \
-    -keyout /etc/opencanary/honeypot.key -out /etc/opencanary/honeypot.crt && \
+    -keyout /etc/opencanaryd/honeypot.key -out /etc/opencanaryd/honeypot.crt && \
     touch /mnt/canary/backups/database_2024.sql && \
     touch /mnt/canary/admin/credentials.txt
 
-EXPOSE 21 22 23 80 443 445 3306 3389 5432 5900 9999
+EXPOSE 21 22 23 80 3306
 
-# Start OpenCanary using shell form to keep container alive
-CMD opencanaryd --start && tail -f /dev/null
+# Run OpenCanary in the foreground
+CMD ["/usr/local/bin/opencanaryd", "--dev"]
