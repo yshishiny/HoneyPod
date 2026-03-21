@@ -74,13 +74,25 @@ Format: `[YYYY-MM-DD] - Description`
 
 | Component | Status |
 |-----------|--------|
-| ELK Stack (Railway) | Kibana + Logstash DNS fix pending commit/push → redeploy |
+| ELK Stack (Railway) | **VERIFIED HEALTHY** — all 7 services SUCCESS as of 2026-03-21 |
 | Docker Compose (local) | Fixed — aligned with 7.17.23 Dockerfiles |
 | Terraform (Hyper-V) | Fixed — local function calls, no Azure provider requirement |
 | Terraform (Azure) | Fixed — conditional deployment via `azure_subscription_id` variable |
 | Ansible | Fixed — invalid module, duplicate blocks, missing templates |
 | Deception Layer | Fixed — OpenCanary config now valid JSON |
 | SIEM Agents | Fixed — Beat versions aligned with ELK 7.17.23 |
+
+### Railway Service Health (2026-03-21)
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| Elasticsearch | SUCCESS | Cluster healthy, GeoIP loaded, Kibana indices created |
+| Kibana | SUCCESS | Connected to `siem.railway.internal:9200`, UI available |
+| Logstash | SUCCESS | Pipelines running, listening on 514 (syslog) + 5000 (Beats) |
+| Redis | SUCCESS | Cache operational |
+| OpenCanary | SUCCESS | Honeypot services active |
+| Cowrie | SUCCESS | SSH/Telnet honeypot active |
+| HoneyPod (root) | SUCCESS | nginx status page — fixed via root Dockerfile |
 
 ---
 
@@ -107,5 +119,25 @@ Format: `[YYYY-MM-DD] - Description`
 - [ ] Post-compromise forensics (memory, disk imaging)
 
 ---
+
+---
+
+## 2026-03-21 — Railway Deployment Verification
+
+### Issues Found & Fixed During Verification
+
+| # | Service | Issue | Fix |
+|---|---------|-------|-----|
+| 22 | Kibana (Railway) | `ELASTICSEARCH_HOSTS` env var still pointed to `elasticsearch.railway.internal` (old DNS) — Railway vars override Dockerfile ENV | Updated Railway variable to `http://siem.railway.internal:9200` via CLI |
+| 23 | Logstash (Railway) | `stdout { codec => rubydebug }` left in `security-tooling/logstash/logstash.conf` — massive log volume in production | Removed stdout output block; committed as `e5a3847` |
+| 24 | HoneyPod root service | No Dockerfile at repo root — Railway Railpack could not detect build target; service failing since day 1 | Added root `Dockerfile` (nginx serving `docs/status.html` status page) |
+| 25 | Logstash (Railway) | XPack license checker trying `http://elasticsearch:9200/` (docker-compose hostname) — not resolvable in Railway | Set `XPACK_MONITORING_ENABLED=false` Railway env var |
+
+### Verification Results
+
+- All 7 Railway services confirmed `SUCCESS`
+- Kibana UI accessible at `kibana-production-4b54.up.railway.app`
+- Logstash pipeline running clean — no errors
+- Elasticsearch cluster healthy with GeoIP databases loaded
 
 *Last updated: 2026-03-21*
