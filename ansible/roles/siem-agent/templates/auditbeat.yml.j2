@@ -1,0 +1,60 @@
+###################### Auditbeat Configuration - HoneyPod Lab ######################
+# Managed by Ansible — do not edit manually
+
+auditbeat.modules:
+  - module: auditd
+    audit_rules: |
+      # Log all executions
+      -a always,exit -F arch=b64 -S execve -k exec
+      -a always,exit -F arch=b32 -S execve -k exec
+
+      # Log privilege escalation
+      -w /etc/sudoers -p wa -k sudoers_change
+      -w /etc/sudoers.d/ -p wa -k sudoers_change
+
+      # Log authentication events
+      -w /var/log/auth.log -p wa -k auth_log
+      -w /etc/passwd -p wa -k passwd_change
+      -w /etc/shadow -p wa -k shadow_change
+
+      # Log SSH configuration changes
+      -w /etc/ssh/sshd_config -p wa -k sshd_config
+
+      # Log cron changes
+      -w /etc/cron.d/ -p wa -k cron_change
+      -w /etc/crontab -p wa -k cron_change
+      -w /var/spool/cron/ -p wa -k cron_change
+
+      # Log network configuration changes
+      -w /etc/hosts -p wa -k hosts_change
+      -w /etc/network/ -p wa -k network_change
+
+  - module: file_integrity
+    paths:
+      - /bin
+      - /usr/bin
+      - /sbin
+      - /usr/sbin
+      - /etc
+
+  - module: system
+    datasets:
+      - host
+      - login
+      - package
+      - process
+      - socket
+      - user
+    period: 10s
+    user.detect_password_changes: true
+
+fields:
+  lab_name: HoneyPod
+  environment: cyber_range
+fields_under_root: true
+
+output.logstash:
+  hosts: ["{{ siem_server }}:5000"]
+
+processors:
+  - add_host_metadata: ~

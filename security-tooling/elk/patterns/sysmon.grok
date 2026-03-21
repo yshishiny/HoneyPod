@@ -1,0 +1,31 @@
+# ============================================================================
+# Custom Grok Patterns for Sysmon and Windows Event Logs
+# Place in /usr/share/logstash/patterns/sysmon.grok
+# ============================================================================
+
+# Sysmon process image path (e.g. C:\Windows\System32\cmd.exe)
+SYSMON_IMAGE [A-Za-z]:\\(?:[^\\]+\\)*[^\\]+\.exe
+
+# Sysmon GUID
+SYSMON_GUID \{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}
+
+# Sysmon process ID
+SYSMON_PID [0-9]+
+
+# Windows registry key path
+WIN_REGISTRY_KEY (?:HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]+
+
+# Windows domain\user format
+WIN_DOMAIN_USER [A-Za-z0-9._-]+\\[A-Za-z0-9._-]+
+
+# Sysmon Event 1 - Process Create
+SYSMON_PROC_CREATE UtcTime: %{TIMESTAMP_ISO8601:sysmon_utc_time} ProcessGuid: %{SYSMON_GUID:sysmon_process_guid} ProcessId: %{SYSMON_PID:sysmon_pid} Image: %{SYSMON_IMAGE:sysmon_image} CommandLine: %{GREEDYDATA:sysmon_cmdline}
+
+# Sysmon Event 3 - Network Connection
+SYSMON_NET_CONNECT UtcTime: %{TIMESTAMP_ISO8601:sysmon_utc_time} ProcessId: %{SYSMON_PID:sysmon_pid} Image: %{SYSMON_IMAGE:sysmon_image} DestinationIp: %{IP:sysmon_dest_ip} DestinationPort: %{INT:sysmon_dest_port}
+
+# Sysmon Event 10 - Process Access
+SYSMON_PROC_ACCESS UtcTime: %{TIMESTAMP_ISO8601:sysmon_utc_time} SourceImage: %{SYSMON_IMAGE:sysmon_src_image} TargetImage: %{SYSMON_IMAGE:sysmon_tgt_image}
+
+# Windows Security Event header
+WIN_EVENT_HEADER EventID: %{INT:win_event_id}

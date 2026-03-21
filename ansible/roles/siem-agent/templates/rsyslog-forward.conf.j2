@@ -1,0 +1,13 @@
+# ============================================================================
+# rsyslog forwarding to HoneyPod SIEM (Logstash)
+# Managed by Ansible — do not edit manually
+# ============================================================================
+
+# Forward all logs to Logstash syslog input (UDP 514)
+*.* @{{ siem_server }}:{{ siem_port }}
+
+# Also forward over TCP for reliability
+*.* @@{{ siem_server }}:{{ siem_port }}
+
+# Local logging still active
+$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat

@@ -1,13 +1,21 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     hyperv = {
       source  = "taliesins/hyperv"
       version = "~> 0.17"
     }
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
-  
+
   backend "local" {
     path = "terraform.tfstate"
   }
@@ -23,6 +31,16 @@ provider "hyperv" {
   https    = var.hyperv_https
   insecure = var.hyperv_insecure
   timeout  = var.hyperv_timeout
+}
+
+# ============================================================================
+# Azure Provider Configuration (Cloud Deployment)
+# Set ARM_SUBSCRIPTION_ID / ARM_CLIENT_ID / ARM_CLIENT_SECRET / ARM_TENANT_ID
+# env vars, or use `az login` before running terraform.
+# ============================================================================
+provider "azurerm" {
+  features {}
+  subscription_id = var.azure_subscription_id
 }
 
 # ============================================================================

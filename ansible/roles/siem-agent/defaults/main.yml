@@ -5,6 +5,7 @@
 
 siem_server: "192.168.50.20"
 siem_port: 514
-filebeat_version: 8.9.1
-auditbeat_version: 8.9.1
+# Beats versions must match the ELK stack version (7.17.23)
+filebeat_version: 7.17.23
+auditbeat_version: 7.17.23
 osquery_version: latest

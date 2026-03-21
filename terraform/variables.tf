@@ -195,3 +195,73 @@ variable "snapshot_retention_days" {
   type        = number
   default     = 30
 }
+
+# ============================================================================
+# Azure Configuration (used when deploying to Azure instead of Hyper-V)
+# ============================================================================
+# ============================================================================
+# Azure VM Sizes
+# ============================================================================
+variable "server_vm_size" {
+  description = "Azure VM size for server-role VMs (DC, DB, Web)"
+  type        = string
+  default     = "Standard_B4ms"
+}
+
+variable "siem_vm_size" {
+  description = "Azure VM size for SIEM server (needs more RAM for Elasticsearch)"
+  type        = string
+  default     = "Standard_D4s_v3"
+}
+
+variable "caldera_vm_size" {
+  description = "Azure VM size for Caldera C2 server"
+  type        = string
+  default     = "Standard_B2s"
+}
+
+variable "endpoint_vm_size" {
+  description = "Azure VM size for endpoint/honeypot VMs"
+  type        = string
+  default     = "Standard_B2s"
+}
+
+variable "azure_subscription_id" {
+  description = "Azure subscription ID for cloud deployment. Leave empty when using Hyper-V."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "azure_location" {
+  description = "Azure region for resource deployment"
+  type        = string
+  default     = "eastus"
+}
+
+variable "azure_resource_group" {
+  description = "Azure resource group name"
+  type        = string
+  default     = "rg-honeypod-lab"
+}
+
+# ============================================================================
+# SSH Key Configuration (used by Azure Linux VMs)
+# ============================================================================
+variable "ssh_public_key_path" {
+  description = "Path to SSH public key for Linux VM access. Must exist before running terraform."
+  type        = string
+  default     = "~/.ssh/id_rsa.pub"
+}
+
+variable "linux_image_publisher" {
+  description = "Azure Marketplace image publisher for Linux VMs"
+  type        = string
+  default     = "Canonical"
+}
+
+variable "linux_image_offer" {
+  description = "Azure Marketplace image offer for Linux VMs"
+  type        = string
+  default     = "0001-com-ubuntu-server-jammy"
+}

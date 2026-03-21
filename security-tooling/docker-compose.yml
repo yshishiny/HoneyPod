@@ -1,16 +1,18 @@
 version: '3.8'
 
+# Load credentials from .env (copy .env.example → .env and set values)
+# See: .env.example
+
 services:
-  # Elasticsearch - Log storage and search
+  # Elasticsearch - Log storage and search (7.17.23, no auth by default)
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
+    build:
+      context: ./elasticsearch
     container_name: honeypod-elasticsearch
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms2g -Xmx2g
-      - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=honeypod-elastic-password-2024
-      - ELASTIC_SECURITY_ENROLLMENT_ENABLED=false
+      - xpack.security.enabled=false
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
@@ -19,15 +21,17 @@ services:
     networks:
       - honeypod-security
     healthcheck:
-      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   # Logstash - Log ingestion and processing
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.9.1
+    build:
+      context: ./logstash
     container_name: honeypod-logstash
     volumes:
       - ./elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
@@ -36,8 +40,7 @@ services:
     environment:
       - LS_JAVA_OPTS=-Xms512m -Xmx512m
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=honeypod-elastic-password-2024
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-honeypod-redis-password-2024}
     ports:
       - "5000:5000"
       - "6514:6514/udp"
@@ -51,12 +54,11 @@ services:
 
   # Kibana - Visualization and dashboards
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.9.1
+    build:
+      context: ./kibana
     container_name: honeypod-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=honeypod-elastic-password-2024
       - KIBANA_DEFAULTAPPID=discover
     ports:
       - "5601:5601"
@@ -67,20 +69,21 @@ services:
       - honeypod-security
     restart: unless-stopped
 
-
   # Redis - Caching for SIEM correlations
   redis:
-    image: redis:7-alpine
+    build:
+      context: ./redis
     container_name: honeypod-redis
-    command: redis-server --requirepass honeypod-redis-password-2024
     volumes:
       - redis-data:/data
     ports:
       - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-honeypod-redis-password-2024}
     networks:
       - honeypod-security
     healthcheck:
-      test: redis-cli --raw incr ping
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-honeypod-redis-password-2024}", "--no-auth-warning", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
