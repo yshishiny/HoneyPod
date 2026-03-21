@@ -13,3 +13,12 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Secrets
+.env
+security-tooling/.env
+terraform/*.tfvars
+!terraform/*.tfvars.example
+*.tfstate
+*.tfstate.backup
+.terraform/
