@@ -1,4 +1,4 @@
-FROM docker.elastic.co/logstash/logstash:8.9.1
+FROM docker.elastic.co/logstash/logstash:7.17.23
 
 ENV LS_JAVA_OPTS="-Xms256m -Xmx256m"
 

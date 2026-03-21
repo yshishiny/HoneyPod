@@ -1,9 +1,7 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:8.9.1
+FROM docker.elastic.co/elasticsearch/elasticsearch:7.17.23
 
 ENV discovery.type=single-node
 ENV ES_JAVA_OPTS="-Xms512m -Xmx512m"
-ENV xpack.security.enabled=false
-ENV xpack.security.enrollment.enabled=false
 
 EXPOSE 9200
 
