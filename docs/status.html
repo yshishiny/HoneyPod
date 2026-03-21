@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HoneyPod — Cyber Range</title>
+  <style>
+    body { font-family: monospace; background: #0d1117; color: #c9d1d9; margin: 0; padding: 40px; }
+    h1 { color: #58a6ff; }
+    .status { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; }
+    .ok { background: #1a4731; color: #3fb950; }
+    table { border-collapse: collapse; width: 100%; max-width: 700px; margin-top: 20px; }
+    td, th { padding: 10px 14px; border: 1px solid #30363d; text-align: left; }
+    th { background: #161b22; color: #8b949e; font-weight: normal; }
+    a { color: #58a6ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>HoneyPod</h1>
+  <p>Threat-informed cyber range &amp; deception platform</p>
+
+  <table>
+    <tr><th>Service</th><th>Role</th><th>Status</th></tr>
+    <tr><td>Elasticsearch</td><td>Data store (ELK 7.17.23)</td><td><span class="status ok">deployed</span></td></tr>
+    <tr><td>Kibana</td><td>SIEM UI</td><td><span class="status ok">deployed</span></td></tr>
+    <tr><td>Logstash</td><td>Log pipeline</td><td><span class="status ok">deployed</span></td></tr>
+    <tr><td>Redis</td><td>Cache / queue</td><td><span class="status ok">deployed</span></td></tr>
+    <tr><td>OpenCanary</td><td>Honeypot (FTP/SSH/RDP/SMB)</td><td><span class="status ok">deployed</span></td></tr>
+    <tr><td>Cowrie</td><td>SSH/Telnet honeypot</td><td><span class="status ok">deployed</span></td></tr>
+  </table>
+
+  <p style="margin-top:30px; color:#484f58; font-size:0.8em;">
+    v1.0 &nbsp;|&nbsp; <a href="https://github.com/yshishiny/HoneyPod">GitHub</a>
+  </p>
+</body>
+</html>
