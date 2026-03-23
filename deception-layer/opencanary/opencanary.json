@@ -28,6 +28,13 @@
                 "file": {
                     "class": "logging.FileHandler",
                     "filename": "/var/log/opencanary/opencanary.log"
+                },
+                "syslog-remote": {
+                    "class": "logging.handlers.SysLogHandler",
+                    "host": "logstash.railway.internal",
+                    "port": 514,
+                    "socktype": "ext://socket.SOCK_DGRAM",
+                    "formatter": "plain"
                 }
             }
         }

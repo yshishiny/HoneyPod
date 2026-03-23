@@ -1,0 +1,35 @@
+version: '3.8'
+
+# MITRE Caldera C2 Attack Simulation
+# For local Hyper-V deployment only — Railway uses the individual Dockerfile
+#
+# Usage:
+#   docker-compose up -d
+#   Access UI: http://localhost:8888
+#   Red team:  admin / admin
+#   Blue team: user / user
+
+services:
+  caldera:
+    build:
+      context: ./caldera
+    container_name: honeypod-caldera
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8888:8888"
+    volumes:
+      - caldera-data:/opt/caldera/data
+    networks:
+      - honeypod-security
+    restart: unless-stopped
+
+volumes:
+  caldera-data:
+    driver: local
+    name: honeypod-caldera-data
+
+networks:
+  honeypod-security:
+    external: true
+    name: honeypod-security

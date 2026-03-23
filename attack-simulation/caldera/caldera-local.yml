@@ -1,0 +1,21 @@
+host: 0.0.0.0
+auth.login.handler.module: default
+
+users:
+  red:
+    admin: admin
+  blue:
+    user: user
+
+plugins:
+  - access
+  - atomic
+  - gameboard
+  - response
+  - stockpile
+  - training
+
+exfil_dir: /tmp/caldera-exfil
+
+api_key_red: ADMIN123
+api_key_blue: BLUEUSER123

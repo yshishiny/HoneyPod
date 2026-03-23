@@ -140,4 +140,28 @@ Format: `[YYYY-MM-DD] - Description`
 - Logstash pipeline running clean — no errors
 - Elasticsearch cluster healthy with GeoIP databases loaded
 
-*Last updated: 2026-03-21*
+*Last updated: 2026-03-24*
+
+---
+
+## 2026-03-24 — Cowrie Hardening + Caldera Attack Simulation
+
+### Fixes
+
+| # | File(s) | Issue | Fix Applied |
+|---|---------|-------|-------------|
+| 26 | `deception-layer/cowrie/Dockerfile` | Used `cowrie/cowrie:latest` official image — unpredictable build, no control over Python version or deps | Rebuilt from `python:3.11-slim-bookworm`, clones from source, installs into venv, runs as non-root `cowrie` user |
+| 27 | `deception-layer/cowrie/cowrie.cfg` | `port = 22` — non-root container user cannot bind privileged port; container would crash at startup | Changed to `port = 2222` (matches EXPOSE in Dockerfile) |
+| 28 | `deception-layer/cowrie/cowrie.cfg` | `log_path` / `data_path` pointed to `/var/log/cowrie` and `/var/lib/cowrie` — system paths the cowrie user cannot write to | Updated to `/cowrie/var/log/cowrie` and `/cowrie/var/lib/cowrie` (under cowrie home, owned by cowrie user) |
+| 29 | `deception-layer/cowrie/cowrie.cfg` | `address = logstash.railway.internal:514` — cowrie syslog plugin expects separate `host` and `port` keys, not combined | Split to `host = logstash.railway.internal` + `port = 514` |
+| 30 | `deception-layer/cowrie/cowrie.cfg` | `listen_addr =` empty and `banner_file` pointed to non-existent path | Set `listen_addr = 0.0.0.0`; removed invalid `banner_file` |
+| 31 | `deception-layer/cowrie/Dockerfile` | Log/data directories not created before switching to non-root user — cowrie would fail to start | Added `mkdir -p /cowrie/var/log/cowrie /cowrie/var/lib/cowrie/downloads` before `USER cowrie` |
+| 32 | `deception-layer/opencanary/opencanary.json` | No syslog handler — honeypot events logged to file/console only, never reached Logstash | Added `syslog-remote` handler pointing to `logstash.railway.internal:514` |
+
+### New: Attack Simulation — MITRE Caldera
+
+| File | Description |
+|------|-------------|
+| `attack-simulation/caldera/Dockerfile` | Builds Caldera v5.0.0 from source on `python:3.11-slim-bookworm` |
+| `attack-simulation/caldera/caldera-local.yml` | Config: red team `admin/admin`, blue team `user/user`, plugins: access/atomic/gameboard/response/stockpile/training |
+| `attack-simulation/docker-compose.yml` | Local Hyper-V deployment; joins `honeypod-security` network; UI on port 8888 |
